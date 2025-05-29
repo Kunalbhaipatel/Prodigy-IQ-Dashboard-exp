@@ -131,42 +131,30 @@ def render_sales_analysis(df):
 
 import streamlit as st
 import pandas as pd
-
-
-import streamlit as st
-import pandas as pd
-
-
-import streamlit as st
-import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
 
-    # ----------- CASCADING FILTERS -----------
     col_d, col_nd = st.columns(2)
 
     with col_d:
         st.subheader("🟩 Derrick")
         derrick_df = df.copy()
-
-        # Step 1: Shaker Filter
         derrick_shaker = st.selectbox("Select Flowline Shaker", sorted(derrick_df["flowline_Shakers"].dropna().unique()), key="d_shaker")
         derrick_df = derrick_df[derrick_df["flowline_Shakers"] == derrick_shaker]
 
-        # Step 2: Operator (based on shaker)
         derrick_ops = sorted(derrick_df["Operator"].dropna().unique())
         derrick_operator = st.selectbox("Select Operator", ["All"] + derrick_ops, key="d_operator")
         if derrick_operator != "All":
             derrick_df = derrick_df[derrick_df["Operator"] == derrick_operator]
 
-        # Step 3: Contractor
         derrick_contracts = sorted(derrick_df["Contractor"].dropna().unique())
         derrick_contractor = st.selectbox("Select Contractor", ["All"] + derrick_contracts, key="d_contract")
         if derrick_contractor != "All":
             derrick_df = derrick_df[derrick_df["Contractor"] == derrick_contractor]
 
-        # Step 4: Well
         derrick_wells = sorted(derrick_df["Well_Name"].dropna().unique())
         derrick_well = st.selectbox("Select Well Name", ["All"] + derrick_wells, key="d_well")
         if derrick_well != "All":
@@ -175,7 +163,6 @@ def render_cost_estimator(df):
     with col_nd:
         st.subheader("🟣 Non-Derrick")
         nond_df = df.copy()
-
         nond_shaker = st.selectbox("Select Flowline Shaker", sorted(nond_df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
         nond_df = nond_df[nond_df["flowline_Shakers"] == nond_shaker]
 
@@ -194,7 +181,6 @@ def render_cost_estimator(df):
         if nond_well != "All":
             nond_df = nond_df[nond_df["Well_Name"] == nond_well]
 
-    # ----------- CONFIG TOGGLES -----------
     derrick_config, nond_config = {}, {}
 
     with st.expander("🎯 Derrick Configuration"):
@@ -219,13 +205,10 @@ def render_cost_estimator(df):
         nond_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="nd_eng")
         nond_config["other_cost"] = st.number_input("Other Cost", value=500, key="nd_other")
 
-    # ----------- CALCULATION -----------
-
     def calc_cost(sub_df, config, label):
         td = sub_df["Total_Dil"].sum()
         ho = sub_df["Haul_OFF"].sum()
         intlen = sub_df["IntLength"].sum()
-
         dilution = config["dil_rate"] * td
         haul = config["haul_rate"] * ho
         screen = config["screen_price"] * config["num_screens"]
@@ -235,38 +218,61 @@ def render_cost_estimator(df):
 
         return {
             "Label": label,
-            "Total Cost": total,
             "Cost/ft": per_ft,
+            "Total Cost": total,
             "Dilution": dilution,
             "Haul": haul,
             "Screen": screen,
             "Equipment": equipment,
             "Engineering": config["eng_cost"],
-            "Other": config["other_cost"]
+            "Other": config["other_cost"],
+            "Avg LGS%": sub_df["LGS"].mean() if "LGS" in sub_df.columns else 0,
+            "DSRE%": sub_df["DSRE"].mean() if "DSRE" in sub_df.columns else 0,
+            "Depth": sub_df["MD Depth"].max() if "MD Depth" in sub_df.columns else 0,
+            "DOW": sub_df["Days_on_Well"].mean() if "Days_on_Well" in sub_df.columns else 0,
         }
 
     derrick_cost = calc_cost(derrick_df, derrick_config, "Derrick")
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
-    # ----------- RESULTS DISPLAY -----------
-
-    st.markdown("### 📊 Cost Comparison Summary")
+    # 📊 Charts
     col1, col2 = st.columns(2)
     col1.metric("Total Cost Saving", f"${nond_cost['Total Cost'] - derrick_cost['Total Cost']:,.0f}")
     col2.metric("Cost Per Foot Saving", f"${nond_cost['Cost/ft'] - derrick_cost['Cost/ft']:,.2f}")
+    st.dataframe(summary.set_index("Label"))
 
-    st.dataframe(summary.set_index("Label").style
-                 .format("${:,.0f}", subset=["Total Cost", "Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"])
-                 .format("{:.2f}", subset=["Cost/ft"]))
+    # Cost per foot bar chart
+    fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison",
+                      color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
+    st.plotly_chart(fig_cost, use_container_width=True)
 
-    st.markdown("### 📉 Cost Breakdown Charts")
-    fig_bar = px.bar(summary, x="Label", y=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"],
-                     barmode="stack", title="Cost Components")
-    st.plotly_chart(fig_bar, use_container_width=True)
+    # Gauge Charts
+    st.markdown("#### 🎯 Efficiency Gauges")
+    for metric in ["Avg LGS%", "DSRE%"]:
+        col1, col2 = st.columns(2)
+        for idx, row in summary.iterrows():
+            fig = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=row[metric],
+                title={'text': f"{row['Label']} {metric}"},
+                gauge={'axis': {'range': [0, 100]}, 'bar': {'color': "#007635" if row["Label"] == "Derrick" else "grey"}}
+            ))
+            if row["Label"] == "Derrick":
+                col1.plotly_chart(fig, use_container_width=True)
+            else:
+                col2.plotly_chart(fig, use_container_width=True)
 
-    fig_pie = px.pie(summary, names="Label", values="Total Cost", title="Total Cost Distribution")
-    st.plotly_chart(fig_pie, use_container_width=True)
+    # Depth & DOW charts
+    st.markdown("#### 📏 Depth & Duration")
+    fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
+                       color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
+    st.plotly_chart(fig_depth, use_container_width=True)
+
+    fig_dow = px.bar(summary, x="Label", y="DOW", color="Label", title="Days on Well (DOW)",
+                     color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
+    st.plotly_chart(fig_dow, use_container_width=True)
+
 
 
 # ------------------------- RUN APP -------------------------
