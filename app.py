@@ -140,12 +140,22 @@ import pandas as pd
 import streamlit as st
 import pandas as pd
 
+
+from PIL import Image
+from shaker_image_map import shaker_images
+
+
+import streamlit as st
+import pandas as pd
+
 def render_dual_filter(df):
     derrick_col, nond_col = st.columns(2)
 
     with derrick_col:
         st.markdown("### 🟢 Derrick")
         derrick_shaker = st.selectbox("Select flowline Shaker", sorted(df["flowline_Shakers"].dropna().unique()), key="d_shaker")
+        if derrick_shaker in shaker_images:
+            st.image(Image.open(shaker_images[derrick_shaker]), caption=derrick_shaker, use_column_width=True)
         derrick_df = df[df["flowline_Shakers"] == derrick_shaker]
 
         derrick_operator = st.selectbox("Select Operators", ["All"] + sorted(derrick_df["Operator"].dropna().unique()), key="d_op")
@@ -162,6 +172,8 @@ def render_dual_filter(df):
     with nond_col:
         st.markdown("### 🟣 Non-Derrick")
         nond_shaker = st.selectbox("Select flowline Shaker", sorted(df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
+        if nond_shaker in shaker_images:
+            st.image(Image.open(shaker_images[nond_shaker]), caption=nond_shaker, use_column_width=True)
         nond_df = df[df["flowline_Shakers"] == nond_shaker]
 
         nond_operator = st.selectbox("Select Operators", ["All"] + sorted(nond_df["Operator"].dropna().unique()), key="nd_op")
@@ -201,7 +213,6 @@ def render_dual_filter(df):
         nond_config["other_cost"] = st.number_input("Other Cost", value=500, key="nd_other")
 
     return derrick_df, nond_df, derrick_config, nond_config
-
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
 
@@ -219,8 +230,6 @@ def render_cost_estimator(df):
         nond_ops = st.multiselect("Select Operators", sorted(df["Operator"].dropna().unique()), key="nonderrick_op")
         nond_contracts = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="nonderrick_cont")
         nond_wells = st.multiselect("Select Well Name", sorted(df["Well_Name"].dropna().unique()), key="nonderrick_well")
-
-    st.markdown("### 🎯 Configuration")
 
     col1, col2 = st.columns(2)
     with col1:
