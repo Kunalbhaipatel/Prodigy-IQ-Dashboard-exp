@@ -235,24 +235,23 @@ def render_cost_estimator(df):
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
-    # Styled summary cards with color logic
     delta_total = nond_cost['Total Cost'] - derrick_cost['Total Cost']
     delta_ft = nond_cost['Cost/ft'] - derrick_cost['Cost/ft']
 
-    color_total = "#d4edda" if delta_total >= 0 else "#f8d7da"
-    color_ft = "#d4edda" if delta_ft >= 0 else "#f8d7da"
-    font_total = "green" if delta_total >= 0 else "red"
-    font_ft = "green" if delta_ft >= 0 else "red"
+    bg_color_total = "#d4edda" if delta_total >= 0 else "#f8d7da"
+    text_color_total = "green" if delta_total >= 0 else "red"
+    bg_color_ft = "#d4edda" if delta_ft >= 0 else "#f8d7da"
+    text_color_ft = "green" if delta_ft >= 0 else "red"
 
     st.markdown(f"""
-        <div style='display: flex; gap: 1rem; margin-top: 1rem;'>
-            <div style='flex: 1; background-color: {color_total}; border-radius: 10px; padding: 1rem; box-shadow: 3px 3px 8px rgba(0,0,0,0.1);'>
-                <h4 style='margin: 0; color: {font_total};'>💵 Total Cost Saving</h4>
-                <p style='font-size: 24px; font-weight: bold; color: {font_total}; margin: 0;'>${delta_total:,.0f}</p>
+        <div style='display: flex; gap: 2rem; margin-top: 1rem;'>
+            <div style='flex: 1; padding: 1rem; border: 2px solid #ccc; border-radius: 10px; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); background-color: {bg_color_total};'>
+                <h4 style='margin: 0 0 0.5rem 0; color: {text_color_total};'>💵 Total Cost Saving</h4>
+                <div style='font-size: 24px; font-weight: bold; color: {text_color_total};'>${delta_total:,.0f}</div>
             </div>
-            <div style='flex: 1; background-color: {color_ft}; border-radius: 10px; padding: 1rem; box-shadow: 3px 3px 8px rgba(0,0,0,0.1);'>
-                <h4 style='margin: 0; color: {font_ft};'>📏 Cost Per Foot Saving</h4>
-                <p style='font-size: 24px; font-weight: bold; color: {font_ft}; margin: 0;'>${delta_ft:,.2f}</p>
+            <div style='flex: 1; padding: 1rem; border: 2px solid #ccc; border-radius: 10px; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); background-color: {bg_color_ft};'>
+                <h4 style='margin: 0 0 0.5rem 0; color: {text_color_ft};'>📏 Cost Per Foot Saving</h4>
+                <div style='font-size: 24px; font-weight: bold; color: {text_color_ft};'>${delta_ft:,.2f}</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
