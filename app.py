@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
+# ------------------------- STYLING -------------------------
 def load_styles():
     st.markdown("""<style>
     div[data-testid="metric-container"] {
@@ -16,6 +17,7 @@ def load_styles():
     }
     </style>""", unsafe_allow_html=True)
 
+# ------------------------- FILTERS -------------------------
 def full_filter_sidebar(df):
     st.sidebar.header("Filters")
     search_term = st.sidebar.text_input("🔍 Search Anything").lower()
@@ -55,6 +57,7 @@ def full_filter_sidebar(df):
 
     return filtered
 
+# ------------------------- PAGE 1 -------------------------
 def render_multi_well(df):
     st.title("🚀 Prodigy IQ Multi-Well Dashboard")
     filtered_df = full_filter_sidebar(df)
@@ -86,6 +89,7 @@ def render_multi_well(df):
     fig_map.update_layout(mapbox_style="open-street-map")
     st.plotly_chart(fig_map, use_container_width=True)
 
+# ------------------------- PAGE 2 -------------------------
 def render_sales_analysis(df):
     st.title("📈 Prodigy IQ Sales Intelligence")
     filtered_df = full_filter_sidebar(df)
@@ -123,28 +127,56 @@ def render_sales_analysis(df):
     fig_map.update_layout(mapbox_style="open-street-map")
     st.plotly_chart(fig_map, use_container_width=True)
 
+# ------------------------- PAGE 3 (COST ESTIMATOR) -------------------------
+
+import streamlit as st
+import pandas as pd
+
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Estimator")
-    shaker_types = ['Derrick Hyperpool', 'NOV King Cobra']
-    selected_shaker = st.selectbox("Select Shaker Type", shaker_types)
 
+    # Shared Filters
+    st.sidebar.header("Filters")
+    operator = st.sidebar.selectbox("Operator", ["All"] + sorted(df["Operator"].dropna().unique()))
+    contractor = st.sidebar.selectbox("Contractor", ["All"] + sorted(df["Contractor"].dropna().unique()))
+    shaker = st.sidebar.selectbox("Shaker Type", ["All"] + sorted(df["flowline_Shakers"].dropna().astype(str).unique()))
+
+    filtered = df.copy()
+    if operator != "All":
+        filtered = filtered[filtered["Operator"] == operator]
+    if contractor != "All":
+        filtered = filtered[filtered["Contractor"] == contractor]
+    if shaker != "All":
+        filtered = filtered[filtered["flowline_Shakers"].astype(str) == shaker]
+
+    # Aggregate Values
+    total_dil = filtered["Total_Dil"].sum()
+    haul_off = filtered["Haul_OFF"].sum()
+    int_length = filtered["IntLength"].sum()
+
+    st.subheader("Calculated Inputs from Filtered Data")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Dilution", f"{total_dil:,.0f}")
+    col2.metric("Total Haul-Off", f"{haul_off:,.0f}")
+    col3.metric("Interval Length", f"{int_length:,.0f} ft")
+
+    # Manual Overrides
+    st.subheader("Custom Cost Parameters")
     col1, col2 = st.columns(2)
     with col1:
-        total_dil = st.number_input("Total Dilution", value=100.0)
-        haul_off = st.number_input("Total Haul-Off", value=50.0)
-        int_length = st.number_input("Interval Length (ft)", value=10000.0)
         dilution_rate = st.selectbox("Dilution Rate ($/unit)", [100, 200, 300, 500], index=0)
         haul_rate = st.selectbox("Haul-Off Rate ($/unit)", [20, 30, 50], index=0)
-        equipment_cost = st.number_input("Equipment Cost", value=100000 if selected_shaker == 'Derrick Hyperpool' else 75000)
+        equipment_cost = st.number_input("Equipment Cost", value=100000)
         rig_use_per_year = st.slider("Shakers used/year", 1, 12, 6)
-        shaker_life = st.slider("Shaker Life Expectancy (years)", 1, 10, 7 if selected_shaker == 'Derrick Hyperpool' else 5)
+        shaker_life = st.slider("Shaker Life Expectancy (years)", 1, 10, 7)
 
     with col2:
         screen_used = st.slider("Screens Used per Rig", 1, 10, 1)
-        screen_price = st.number_input("Screen Price", value=500 if selected_shaker == 'Derrick Hyperpool' else 400)
+        screen_price = st.number_input("Screen Price", value=500)
         eng_rate = st.number_input("Engineering Day Rate", value=1000)
         other_cost = st.number_input("Other Cost", value=500)
 
+    # Calculations
     dilution_cost = dilution_rate * total_dil
     haul_cost = haul_rate * haul_off
     equip_cost = equipment_cost / (shaker_life * rig_use_per_year)
@@ -152,7 +184,7 @@ def render_cost_estimator(df):
     total_cost = dilution_cost + haul_cost + equip_cost + screen_cost + eng_rate + other_cost
     cost_per_foot = total_cost / int_length if int_length else 0
 
-    st.header("📊 Cost Breakdown for {}".format(selected_shaker))
+    st.subheader("📊 Cost Summary")
     colA, colB, colC = st.columns(3)
     colA.metric("Dilution Cost", f"${dilution_cost:,.0f}")
     colB.metric("Haul-Off Cost", f"${haul_cost:,.0f}")
@@ -161,17 +193,18 @@ def render_cost_estimator(df):
     colB.metric("Other Cost", f"${other_cost:,.0f}")
     colC.metric("Engineering Cost", f"${eng_rate:,.0f}")
 
-    st.subheader("💡 Total Cost & Savings")
+    st.markdown("----")
     st.metric("Cumulative Cost", f"${total_cost:,.0f}")
     st.metric("Cost Per Foot", f"${cost_per_foot:,.2f}/ft")
 
-    if selected_shaker == 'Derrick Hyperpool':
-        nov_cost = 122320 + 96000 + 40000 + 1500 + 500
-        savings = nov_cost - total_cost
-        color = "green" if savings > 0 else "red"
-        st.markdown(f"### 💰 Estimated Savings vs. NOV: <span style='color:{color}; font-weight:bold;'>${savings:,.0f}</span>", unsafe_allow_html=True)
+    # Optional savings logic (compare vs baseline)
+    baseline_cost = 260320
+    savings = baseline_cost - total_cost
+    color = "green" if savings > 0 else "red"
+    st.markdown(f"### 💰 Estimated Savings vs. Baseline: <span style='color:{color}; font-weight:bold;'>${savings:,.0f}</span>", unsafe_allow_html=True)
 
-# MAIN
+
+# ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
 load_styles()
 df = pd.read_csv("Refine Sample.csv")
