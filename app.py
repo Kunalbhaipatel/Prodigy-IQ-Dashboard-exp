@@ -254,7 +254,25 @@ def render_cost_estimator(df):
     </div>
     """.format(color_total=color_total, color_perft=color_perft, cost_diff=cost_diff, ft_diff=ft_diff), unsafe_allow_html=True)
 
-    st.dataframe(summary.set_index("Label"))
+    st.markdown("### 📋 Summary Metrics")
+    for idx, row in summary.iterrows():
+        label_color = "#007635" if row['Label'] == "Derrick" else "grey"
+        st.markdown(f"""
+        <div style='border: 2px solid {label_color}; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;'>
+            <h4 style='color:{label_color};'>{row['Label']}</h4>
+            <p><b>Cost per Foot:</b> ${row['Cost/ft']:.2f}</p>
+            <p><b>Total Cost:</b> ${row['Total Cost']:,.0f}</p>
+            <p><b>Dilution:</b> ${row['Dilution']:,.0f}</p>
+            <p><b>Haul:</b> ${row['Haul']:,.0f}</p>
+            <p><b>Screen:</b> ${row['Screen']:,.0f}</p>
+            <p><b>Equipment:</b> ${row['Equipment']:,.0f}</p>
+            <p><b>Engineering:</b> ${row['Engineering']:,.0f}</p>
+            <p><b>Other:</b> ${row['Other']:,.0f}</p>
+            <p><b>Avg LGS%:</b> {row['Avg LGS%']:.2f}%</p>
+            <p><b>DSRE%:</b> {row['DSRE%']:.2f}%</p>
+            <p><b>Depth:</b> {row['Depth']:,.0f} ft</p>
+        </div>
+        """, unsafe_allow_html=True)
 
     fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison",
                       color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
@@ -264,7 +282,6 @@ def render_cost_estimator(df):
     fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
                        color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
     st.plotly_chart(fig_depth, use_container_width=True)
-
 
 
 # ------------------------- RUN APP -------------------------
