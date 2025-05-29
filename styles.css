@@ -1,0 +1,35 @@
+
+/* Custom Streamlit Styles for Prodigy IQ Dashboard */
+
+/* Global font and spacing */
+html, body, [class*="css"] {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 15px;
+}
+
+/* Card-like appearance for metric boxes */
+div[data-testid="metric-container"] {
+    background-color: #ffffff;
+    padding: 1.2em;
+    border-radius: 15px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+    margin: 0.5em 0.5em;
+    text-align: center;
+}
+
+/* Sidebar section padding */
+section[data-testid="stSidebar"] {
+    padding: 1.5rem;
+}
+
+/* Style for subheaders */
+h2 {
+    color: #2c3e50;
+    margin-top: 1.5rem;
+}
+
+/* Custom pie chart title alignment */
+h3 {
+    color: #007635;
+    font-weight: 600;
+}
