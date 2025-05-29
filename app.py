@@ -129,8 +129,6 @@ def render_sales_analysis(df):
 
 # ------------------------- PAGE 3: COST ESTIMATOR -------------------------
 
-import streamlit as st
-import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
@@ -228,8 +226,8 @@ def render_cost_estimator(df):
             "Equipment": equipment,
             "Engineering": config["eng_cost"],
             "Other": config["other_cost"],
-            "Avg LGS%": sub_df["LGS"].mean() if "LGS" in sub_df.columns else 0,
-            "DSRE%": sub_df["DSRE"].mean() if "DSRE" in sub_df.columns else 0,
+            "Avg LGS%": (sub_df["LGS"].mean() * 100) if "LGS" in sub_df.columns else 0,
+            "DSRE%": (sub_df["DSRE"].mean() * 100) if "DSRE" in sub_df.columns else 0,
             "Depth": sub_df["MD Depth"].max() if "MD Depth" in sub_df.columns else 0,
             "DOW": sub_df["Days_on_Well"].mean() if "Days_on_Well" in sub_df.columns else 0,
         }
