@@ -262,7 +262,7 @@ def render_cost_estimator(df):
             "Other": other_cost
         }
 
-    derrick_df, nond_df = render_dual_filter(df)
+    derrick_df, nond_df, derrick_config, nond_config = render_dual_filter(df)
     # dynamic filter applied
     if True:
         derrick_df = derrick_df[derrick_df["flowline_Shakers"].isin(derrick_shakers)]
