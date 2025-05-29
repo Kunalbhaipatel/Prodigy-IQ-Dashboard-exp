@@ -131,6 +131,35 @@ def render_sales_analysis(df):
 
 import streamlit as st
 import pandas as pd
+
+def render_dual_filter(df):
+    st.title("🧪 Shaker Comparison Filter Panel")
+
+    derrick_col, nond_col = st.columns(2)
+
+    with derrick_col:
+        st.markdown("### 🟢 Derrick")
+        derrick_shakers = st.multiselect("Select Flowline Shakers", sorted(df["flowline_Shakers"].dropna().unique()), key="d_shaker")
+        derrick_operators = st.multiselect("Select Operators", sorted(df["Operator"].dropna().unique()), key="d_op")
+        derrick_contractors = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="d_cont")
+        derrick_wells = st.multiselect("Select Well Names", sorted(df["Well_Name"].dropna().unique()), key="d_well")
+
+    with nond_col:
+        st.markdown("### ⚪ Non-Derrick")
+        nond_shakers = st.multiselect("Select Flowline Shakers", sorted(df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
+        nond_operators = st.multiselect("Select Operators", sorted(df["Operator"].dropna().unique()), key="nd_op")
+        nond_contractors = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="nd_cont")
+        nond_wells = st.multiselect("Select Well Names", sorted(df["Well_Name"].dropna().unique()), key="nd_well")
+
+    if st.button("Apply"):
+        st.success("Filters applied. Proceed to comparison or cost view.")
+
+    if st.button("Clear All"):
+        st.experimental_rerun()
+
+
+import streamlit as st
+import pandas as pd
 import plotly.express as px
 
 def render_cost_estimator(df):
