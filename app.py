@@ -136,21 +136,21 @@ import pandas as pd
 import streamlit as st
 import pandas as pd
 
+
+import streamlit as st
+import pandas as pd
+
 def render_dual_filter(df):
-    st.title("🧪 Flowline Shaker Group Comparison")
-
-    shaker_options = sorted(df["flowline_Shakers"].dropna().unique())
-
     derrick_col, nond_col = st.columns(2)
 
     with derrick_col:
-        st.markdown("### 🟢 Derrick Shaker Model")
-        derrick_shaker = st.selectbox("Select Derrick Shaker Model", shaker_options, key="d_shaker")
+        st.markdown("### 🟢 Derrick")
+        derrick_shaker = st.selectbox("Select flowline Shaker", sorted(df["flowline_Shakers"].dropna().unique()), key="d_shaker")
         derrick_df = df[df["flowline_Shakers"] == derrick_shaker]
 
-        derrick_operator = st.selectbox("Operator", ["All"] + sorted(derrick_df["Operator"].dropna().unique()), key="d_op")
-        derrick_contractor = st.selectbox("Contractor", ["All"] + sorted(derrick_df["Contractor"].dropna().unique()), key="d_cont")
-        derrick_well = st.selectbox("Well", ["All"] + sorted(derrick_df["Well_Name"].dropna().unique()), key="d_well")
+        derrick_operator = st.selectbox("Select Operators", ["All"] + sorted(derrick_df["Operator"].dropna().unique()), key="d_op")
+        derrick_contractor = st.selectbox("Select Contractors", ["All"] + sorted(derrick_df["Contractor"].dropna().unique()), key="d_cont")
+        derrick_well = st.selectbox("Select Well Name", ["All"] + sorted(derrick_df["Well_Name"].dropna().unique()), key="d_well")
 
         if derrick_operator != "All":
             derrick_df = derrick_df[derrick_df["Operator"] == derrick_operator]
@@ -160,13 +160,13 @@ def render_dual_filter(df):
             derrick_df = derrick_df[derrick_df["Well_Name"] == derrick_well]
 
     with nond_col:
-        st.markdown("### ⚪ Non-Derrick Shaker Model")
-        nond_shaker = st.selectbox("Select Non-Derrick Shaker Model", shaker_options, key="nd_shaker")
+        st.markdown("### 🟣 Non-Derrick")
+        nond_shaker = st.selectbox("Select flowline Shaker", sorted(df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
         nond_df = df[df["flowline_Shakers"] == nond_shaker]
 
-        nond_operator = st.selectbox("Operator", ["All"] + sorted(nond_df["Operator"].dropna().unique()), key="nd_op")
-        nond_contractor = st.selectbox("Contractor", ["All"] + sorted(nond_df["Contractor"].dropna().unique()), key="nd_cont")
-        nond_well = st.selectbox("Well", ["All"] + sorted(nond_df["Well_Name"].dropna().unique()), key="nd_well")
+        nond_operator = st.selectbox("Select Operators", ["All"] + sorted(nond_df["Operator"].dropna().unique()), key="nd_op")
+        nond_contractor = st.selectbox("Select Contractors", ["All"] + sorted(nond_df["Contractor"].dropna().unique()), key="nd_cont")
+        nond_well = st.selectbox("Select Well Name", ["All"] + sorted(nond_df["Well_Name"].dropna().unique()), key="nd_well")
 
         if nond_operator != "All":
             nond_df = nond_df[nond_df["Operator"] == nond_operator]
@@ -175,7 +175,32 @@ def render_dual_filter(df):
         if nond_well != "All":
             nond_df = nond_df[nond_df["Well_Name"] == nond_well]
 
-    return derrick_df, nond_df
+    # Optional configurations inside toggle containers
+    derrick_config, nond_config = {}, {}
+
+    with st.expander("🎯 Derrick Cost Configuration"):
+        derrick_config["dil_rate"] = st.number_input("Dilution Cost Rate ($/unit)", value=100, key="d_dil")
+        derrick_config["haul_rate"] = st.number_input("Haul-Off Cost Rate ($/unit)", value=20, key="d_haul")
+        derrick_config["screen_price"] = st.number_input("Screen Price", value=500, key="d_scr_price")
+        derrick_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="d_scr_cnt")
+        derrick_config["equip_cost"] = st.number_input("Total Equipment Cost", value=100000, key="d_equip")
+        derrick_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="d_shkrs")
+        derrick_config["shaker_life"] = st.number_input("Shaker Life (Years)", value=7, key="d_life")
+        derrick_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="d_eng")
+        derrick_config["other_cost"] = st.number_input("Other Cost", value=500, key="d_other")
+
+    with st.expander("🎯 Non-Derrick Cost Configuration"):
+        nond_config["dil_rate"] = st.number_input("Dilution Cost Rate ($/unit)", value=100, key="nd_dil")
+        nond_config["haul_rate"] = st.number_input("Haul-Off Cost Rate ($/unit)", value=20, key="nd_haul")
+        nond_config["screen_price"] = st.number_input("Screen Price", value=500, key="nd_scr_price")
+        nond_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="nd_scr_cnt")
+        nond_config["equip_cost"] = st.number_input("Total Equipment Cost", value=100000, key="nd_equip")
+        nond_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="nd_shkrs")
+        nond_config["shaker_life"] = st.number_input("Shaker Life (Years)", value=7, key="nd_life")
+        nond_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="nd_eng")
+        nond_config["other_cost"] = st.number_input("Other Cost", value=500, key="nd_other")
+
+    return derrick_df, nond_df, derrick_config, nond_config
 
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
