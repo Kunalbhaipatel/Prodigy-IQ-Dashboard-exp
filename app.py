@@ -143,45 +143,58 @@ import pandas as pd
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
 
-    # ----------- FILTERS -----------
+    # ----------- CASCADING FILTERS -----------
     col_d, col_nd = st.columns(2)
+
     with col_d:
         st.subheader("🟩 Derrick")
         derrick_df = df.copy()
 
-        derrick_shakers = st.multiselect("Select Flowline Shakers", sorted(derrick_df["flowline_Shakers"].dropna().unique()), key="d_shaker")
-        derrick_operators = st.multiselect("Select Operators", sorted(derrick_df["Operator"].dropna().unique()), key="d_operator")
-        derrick_contractors = st.multiselect("Select Contractors", sorted(derrick_df["Contractor"].dropna().unique()), key="d_contract")
-        derrick_wells = st.multiselect("Select Well Names", sorted(derrick_df["Well_Name"].dropna().unique()), key="d_well")
+        # Step 1: Shaker Filter
+        derrick_shaker = st.selectbox("Select Flowline Shaker", sorted(derrick_df["flowline_Shakers"].dropna().unique()), key="d_shaker")
+        derrick_df = derrick_df[derrick_df["flowline_Shakers"] == derrick_shaker]
 
-        if derrick_shakers:
-            derrick_df = derrick_df[derrick_df["flowline_Shakers"].isin(derrick_shakers)]
-        if derrick_operators:
-            derrick_df = derrick_df[derrick_df["Operator"].isin(derrick_operators)]
-        if derrick_contractors:
-            derrick_df = derrick_df[derrick_df["Contractor"].isin(derrick_contractors)]
-        if derrick_wells:
-            derrick_df = derrick_df[derrick_df["Well_Name"].isin(derrick_wells)]
+        # Step 2: Operator (based on shaker)
+        derrick_ops = sorted(derrick_df["Operator"].dropna().unique())
+        derrick_operator = st.selectbox("Select Operator", ["All"] + derrick_ops, key="d_operator")
+        if derrick_operator != "All":
+            derrick_df = derrick_df[derrick_df["Operator"] == derrick_operator]
+
+        # Step 3: Contractor
+        derrick_contracts = sorted(derrick_df["Contractor"].dropna().unique())
+        derrick_contractor = st.selectbox("Select Contractor", ["All"] + derrick_contracts, key="d_contract")
+        if derrick_contractor != "All":
+            derrick_df = derrick_df[derrick_df["Contractor"] == derrick_contractor]
+
+        # Step 4: Well
+        derrick_wells = sorted(derrick_df["Well_Name"].dropna().unique())
+        derrick_well = st.selectbox("Select Well Name", ["All"] + derrick_wells, key="d_well")
+        if derrick_well != "All":
+            derrick_df = derrick_df[derrick_df["Well_Name"] == derrick_well]
 
     with col_nd:
         st.subheader("🟣 Non-Derrick")
         nond_df = df.copy()
 
-        nond_shakers = st.multiselect("Select Flowline Shakers", sorted(nond_df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
-        nond_operators = st.multiselect("Select Operators", sorted(nond_df["Operator"].dropna().unique()), key="nd_operator")
-        nond_contractors = st.multiselect("Select Contractors", sorted(nond_df["Contractor"].dropna().unique()), key="nd_contract")
-        nond_wells = st.multiselect("Select Well Names", sorted(nond_df["Well_Name"].dropna().unique()), key="nd_well")
+        nond_shaker = st.selectbox("Select Flowline Shaker", sorted(nond_df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
+        nond_df = nond_df[nond_df["flowline_Shakers"] == nond_shaker]
 
-        if nond_shakers:
-            nond_df = nond_df[nond_df["flowline_Shakers"].isin(nond_shakers)]
-        if nond_operators:
-            nond_df = nond_df[nond_df["Operator"].isin(nond_operators)]
-        if nond_contractors:
-            nond_df = nond_df[nond_df["Contractor"].isin(nond_contractors)]
-        if nond_wells:
-            nond_df = nond_df[nond_df["Well_Name"].isin(nond_wells)]
+        nond_ops = sorted(nond_df["Operator"].dropna().unique())
+        nond_operator = st.selectbox("Select Operator", ["All"] + nond_ops, key="nd_operator")
+        if nond_operator != "All":
+            nond_df = nond_df[nond_df["Operator"] == nond_operator]
 
-    # ----------- CONFIGURATION (Toggle Sections) -----------
+        nond_contracts = sorted(nond_df["Contractor"].dropna().unique())
+        nond_contractor = st.selectbox("Select Contractor", ["All"] + nond_contracts, key="nd_contract")
+        if nond_contractor != "All":
+            nond_df = nond_df[nond_df["Contractor"] == nond_contractor]
+
+        nond_wells = sorted(nond_df["Well_Name"].dropna().unique())
+        nond_well = st.selectbox("Select Well Name", ["All"] + nond_wells, key="nd_well")
+        if nond_well != "All":
+            nond_df = nond_df[nond_df["Well_Name"] == nond_well]
+
+    # ----------- CONFIG TOGGLES -----------
     derrick_config, nond_config = {}, {}
 
     with st.expander("🎯 Derrick Configuration"):
@@ -206,7 +219,8 @@ def render_cost_estimator(df):
         nond_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="nd_eng")
         nond_config["other_cost"] = st.number_input("Other Cost", value=500, key="nd_other")
 
-    # ----------- COST CALCULATION LOGIC -----------
+    # ----------- CALCULATION -----------
+
     def calc_cost(sub_df, config, label):
         td = sub_df["Total_Dil"].sum()
         ho = sub_df["Haul_OFF"].sum()
@@ -235,7 +249,8 @@ def render_cost_estimator(df):
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
-    # ----------- DISPLAY RESULTS -----------
+    # ----------- RESULTS DISPLAY -----------
+
     st.markdown("### 📊 Cost Comparison Summary")
     col1, col2 = st.columns(2)
     col1.metric("Total Cost Saving", f"${nond_cost['Total Cost'] - derrick_cost['Total Cost']:,.0f}")
