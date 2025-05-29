@@ -147,9 +147,17 @@ def render_cost_estimator(df):
     col_d, col_nd = st.columns(2)
     with col_d:
         st.subheader("🟩 Derrick")
-        derrick_contractors = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="d_cont")
-        derrick_wells = st.multiselect("Select Well Name", sorted(df["Well_Name"].dropna().unique()), key="d_well")
         derrick_df = df.copy()
+
+        derrick_shakers = st.multiselect("Select Flowline Shakers", sorted(derrick_df["flowline_Shakers"].dropna().unique()), key="d_shaker")
+        derrick_operators = st.multiselect("Select Operators", sorted(derrick_df["Operator"].dropna().unique()), key="d_operator")
+        derrick_contractors = st.multiselect("Select Contractors", sorted(derrick_df["Contractor"].dropna().unique()), key="d_contract")
+        derrick_wells = st.multiselect("Select Well Names", sorted(derrick_df["Well_Name"].dropna().unique()), key="d_well")
+
+        if derrick_shakers:
+            derrick_df = derrick_df[derrick_df["flowline_Shakers"].isin(derrick_shakers)]
+        if derrick_operators:
+            derrick_df = derrick_df[derrick_df["Operator"].isin(derrick_operators)]
         if derrick_contractors:
             derrick_df = derrick_df[derrick_df["Contractor"].isin(derrick_contractors)]
         if derrick_wells:
@@ -157,25 +165,32 @@ def render_cost_estimator(df):
 
     with col_nd:
         st.subheader("🟣 Non-Derrick")
-        nond_contractors = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="nd_cont")
-        nond_wells = st.multiselect("Select Well Name", sorted(df["Well_Name"].dropna().unique()), key="nd_well")
         nond_df = df.copy()
+
+        nond_shakers = st.multiselect("Select Flowline Shakers", sorted(nond_df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
+        nond_operators = st.multiselect("Select Operators", sorted(nond_df["Operator"].dropna().unique()), key="nd_operator")
+        nond_contractors = st.multiselect("Select Contractors", sorted(nond_df["Contractor"].dropna().unique()), key="nd_contract")
+        nond_wells = st.multiselect("Select Well Names", sorted(nond_df["Well_Name"].dropna().unique()), key="nd_well")
+
+        if nond_shakers:
+            nond_df = nond_df[nond_df["flowline_Shakers"].isin(nond_shakers)]
+        if nond_operators:
+            nond_df = nond_df[nond_df["Operator"].isin(nond_operators)]
         if nond_contractors:
             nond_df = nond_df[nond_df["Contractor"].isin(nond_contractors)]
         if nond_wells:
             nond_df = nond_df[nond_df["Well_Name"].isin(nond_wells)]
 
-    # ----------- COST CONFIG -----------
-
+    # ----------- CONFIGURATION (Toggle Sections) -----------
     derrick_config, nond_config = {}, {}
 
     with st.expander("🎯 Derrick Configuration"):
         derrick_config["dil_rate"] = st.number_input("Dilution Cost Rate ($/unit)", value=100, key="d_dil")
         derrick_config["haul_rate"] = st.number_input("Haul-Off Cost Rate ($/unit)", value=20, key="d_haul")
-        derrick_config["screen_price"] = st.number_input("Screen Price", value=500, key="d_screen")
-        derrick_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="d_screens")
+        derrick_config["screen_price"] = st.number_input("Screen Price", value=500, key="d_scr_price")
+        derrick_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="d_scr_cnt")
         derrick_config["equip_cost"] = st.number_input("Total Equipment Cost", value=100000, key="d_equip")
-        derrick_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="d_shakers")
+        derrick_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="d_shkrs")
         derrick_config["shaker_life"] = st.number_input("Shaker Life (Years)", value=7, key="d_life")
         derrick_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="d_eng")
         derrick_config["other_cost"] = st.number_input("Other Cost", value=500, key="d_other")
@@ -183,16 +198,15 @@ def render_cost_estimator(df):
     with st.expander("🎯 Non-Derrick Configuration"):
         nond_config["dil_rate"] = st.number_input("Dilution Cost Rate ($/unit)", value=100, key="nd_dil")
         nond_config["haul_rate"] = st.number_input("Haul-Off Cost Rate ($/unit)", value=20, key="nd_haul")
-        nond_config["screen_price"] = st.number_input("Screen Price", value=500, key="nd_screen")
-        nond_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="nd_screens")
+        nond_config["screen_price"] = st.number_input("Screen Price", value=500, key="nd_scr_price")
+        nond_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="nd_scr_cnt")
         nond_config["equip_cost"] = st.number_input("Total Equipment Cost", value=100000, key="nd_equip")
-        nond_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="nd_shakers")
+        nond_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="nd_shkrs")
         nond_config["shaker_life"] = st.number_input("Shaker Life (Years)", value=7, key="nd_life")
         nond_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="nd_eng")
         nond_config["other_cost"] = st.number_input("Other Cost", value=500, key="nd_other")
 
-    # ----------- COST CALCULATION -----------
-
+    # ----------- COST CALCULATION LOGIC -----------
     def calc_cost(sub_df, config, label):
         td = sub_df["Total_Dil"].sum()
         ho = sub_df["Haul_OFF"].sum()
@@ -222,7 +236,6 @@ def render_cost_estimator(df):
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
     # ----------- DISPLAY RESULTS -----------
-
     st.markdown("### 📊 Cost Comparison Summary")
     col1, col2 = st.columns(2)
     col1.metric("Total Cost Saving", f"${nond_cost['Total Cost'] - derrick_cost['Total Cost']:,.0f}")
