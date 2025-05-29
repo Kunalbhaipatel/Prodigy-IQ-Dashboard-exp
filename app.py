@@ -132,35 +132,50 @@ def render_sales_analysis(df):
 import streamlit as st
 import pandas as pd
 
+
+import streamlit as st
+import pandas as pd
+
 def render_dual_filter(df):
-    st.title("🧪 Shaker Comparison Filter Panel")
+    st.title("🧪 Flowline Shaker Group Comparison")
+
+    shaker_options = sorted(df["flowline_Shakers"].dropna().unique())
 
     derrick_col, nond_col = st.columns(2)
 
     with derrick_col:
-        st.markdown("### 🟢 Derrick")
-        derrick_shakers = st.multiselect("Select Flowline Shakers", sorted(df["flowline_Shakers"].dropna().unique()), key="d_shaker")
-        derrick_operators = st.multiselect("Select Operators", sorted(df["Operator"].dropna().unique()), key="d_op")
-        derrick_contractors = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="d_cont")
-        derrick_wells = st.multiselect("Select Well Names", sorted(df["Well_Name"].dropna().unique()), key="d_well")
+        st.markdown("### 🟢 Derrick Shaker Model")
+        derrick_shaker = st.selectbox("Select Derrick Shaker Model", shaker_options, key="d_shaker")
+        derrick_df = df[df["flowline_Shakers"] == derrick_shaker]
+
+        derrick_operator = st.selectbox("Operator", ["All"] + sorted(derrick_df["Operator"].dropna().unique()), key="d_op")
+        derrick_contractor = st.selectbox("Contractor", ["All"] + sorted(derrick_df["Contractor"].dropna().unique()), key="d_cont")
+        derrick_well = st.selectbox("Well", ["All"] + sorted(derrick_df["Well_Name"].dropna().unique()), key="d_well")
+
+        if derrick_operator != "All":
+            derrick_df = derrick_df[derrick_df["Operator"] == derrick_operator]
+        if derrick_contractor != "All":
+            derrick_df = derrick_df[derrick_df["Contractor"] == derrick_contractor]
+        if derrick_well != "All":
+            derrick_df = derrick_df[derrick_df["Well_Name"] == derrick_well]
 
     with nond_col:
-        st.markdown("### ⚪ Non-Derrick")
-        nond_shakers = st.multiselect("Select Flowline Shakers", sorted(df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
-        nond_operators = st.multiselect("Select Operators", sorted(df["Operator"].dropna().unique()), key="nd_op")
-        nond_contractors = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="nd_cont")
-        nond_wells = st.multiselect("Select Well Names", sorted(df["Well_Name"].dropna().unique()), key="nd_well")
+        st.markdown("### ⚪ Non-Derrick Shaker Model")
+        nond_shaker = st.selectbox("Select Non-Derrick Shaker Model", shaker_options, key="nd_shaker")
+        nond_df = df[df["flowline_Shakers"] == nond_shaker]
 
-    if st.button("Apply"):
-        st.success("Filters applied. Proceed to comparison or cost view.")
+        nond_operator = st.selectbox("Operator", ["All"] + sorted(nond_df["Operator"].dropna().unique()), key="nd_op")
+        nond_contractor = st.selectbox("Contractor", ["All"] + sorted(nond_df["Contractor"].dropna().unique()), key="nd_cont")
+        nond_well = st.selectbox("Well", ["All"] + sorted(nond_df["Well_Name"].dropna().unique()), key="nd_well")
 
-    if st.button("Clear All"):
-        st.experimental_rerun()
+        if nond_operator != "All":
+            nond_df = nond_df[nond_df["Operator"] == nond_operator]
+        if nond_contractor != "All":
+            nond_df = nond_df[nond_df["Contractor"] == nond_contractor]
+        if nond_well != "All":
+            nond_df = nond_df[nond_df["Well_Name"] == nond_well]
 
-
-import streamlit as st
-import pandas as pd
-import plotly.express as px
+    return derrick_df, nond_df
 
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
