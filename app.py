@@ -133,11 +133,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import streamlit as st
-from io import BytesIO
-from fpdf import FPDF
-import tempfile
-import os
-
 
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
@@ -240,32 +235,37 @@ def render_cost_estimator(df):
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
-    if st.button("📥 Download Summary as PDF"):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt="Flowline Shaker Cost Comparison", ln=True, align="C")
+    st.markdown("#### 📊 Cost Breakdown Pie Charts")
+    pie1, pie2 = st.columns(2)
 
-        for idx, row in summary.iterrows():
-            pdf.ln(10)
-            pdf.set_font("Arial", 'B', size=12)
-            pdf.cell(200, 10, txt=row['Label'], ln=True)
-            pdf.set_font("Arial", size=11)
-            for key, value in row.items():
-                if key != 'Label':
-                    pdf.cell(200, 8, txt=f"{key}: {value:.2f}", ln=True)
+    with pie1:
+        derrick_fig = px.pie(
+            names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"],
+            values=[derrick_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]],
+            title="Derrick Cost Breakdown",
+            color_discrete_sequence=["#1b5e20", "#2e7d32", "#388e3c", "#43a047", "#4caf50", "#66bb6a"]
+        )
+        derrick_fig.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(derrick_fig, use_container_width=True)
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
-            fig = px.bar(summary, x="Label", y="Cost/ft", title="Cost per Foot Comparison")
-            fig.write_image(tmpfile.name)
-            pdf.image(tmpfile.name, x=10, w=180)
+    with pie2:
+        nond_fig = px.pie(
+            names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"],
+            values=[nond_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]],
+            title="Non-Derrick Cost Breakdown",
+            color_discrete_sequence=["#424242", "#616161", "#757575", "#9e9e9e", "#bdbdbd", "#e0e0e0"]
+        )
+        nond_fig.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(nond_fig, use_container_width=True)
 
-        buffer = BytesIO()
-        pdf_bytes = pdf.output(dest='S').encode('latin1')
-        buffer.write(pdf_bytes)
-        buffer.seek(0)
+    fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison",
+                      color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
+    st.plotly_chart(fig_cost, use_container_width=True)
 
-        st.download_button("📄 Download PDF", data=buffer, file_name="cost_summary.pdf", mime="application/pdf")
+    st.markdown("#### 📏 Depth")
+    fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
+                       color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
+    st.plotly_chart(fig_depth, use_container_width=True)
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
