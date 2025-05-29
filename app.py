@@ -140,10 +140,10 @@ import pandas as pd
 import streamlit as st
 import pandas as pd
 
-def render_cost_estimator(df):
-    st.title("💰 Flowline Shaker Cost Comparison")
 
+def get_filtered_cost_data(df):
     col_d, col_nd = st.columns(2)
+
     with col_d:
         st.subheader("🟩 Derrick")
         derrick_contracts = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="derrick_cont")
@@ -154,8 +154,28 @@ def render_cost_estimator(df):
         nond_contracts = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="nonderrick_cont")
         nond_wells = st.multiselect("Select Well Name", sorted(df["Well_Name"].dropna().unique()), key="nonderrick_well")
 
-    st.markdown("### 🎯 Configuration")
+    derrick_df = df.copy()
+    if derrick_contracts:
+        derrick_df = derrick_df[derrick_df["Contractor"].isin(derrick_contracts)]
+    if derrick_wells:
+        derrick_df = derrick_df[derrick_df["Well_Name"].isin(derrick_wells)]
 
+    nond_df = df.copy()
+    if nond_contracts:
+        nond_df = nond_df[nond_df["Contractor"].isin(nond_contracts)]
+    if nond_wells:
+        nond_df = nond_df[nond_df["Well_Name"].isin(nond_wells)]
+
+    return derrick_df, nond_df
+
+def render_cost_estimator(df):
+    st.title("💰 Flowline Shaker Cost Comparison")
+
+    # Apply clean filters
+    derrick_df, nond_df = get_filtered_cost_data(df)
+
+    # Configuration
+    st.markdown("### 🎯 Configuration")
     col1, col2 = st.columns(2)
     with col1:
         dil_rate = st.number_input("Dilution Cost Rate ($/unit)", value=100)
@@ -196,21 +216,8 @@ def render_cost_estimator(df):
             "Other": other_cost
         }
 
-    derrick_df = df.copy()
-    if derrick_contracts:
-        derrick_df = derrick_df[derrick_df["Contractor"].isin(derrick_contracts)]
-    if derrick_wells:
-        derrick_df = derrick_df[derrick_df["Well_Name"].isin(derrick_wells)]
-
-    nond_df = df.copy()
-    if nond_contracts:
-        nond_df = nond_df[nond_df["Contractor"].isin(nond_contracts)]
-    if nond_wells:
-        nond_df = nond_df[nond_df["Well_Name"].isin(nond_wells)]
-
     derrick_costs = calc_group_cost(derrick_df, "Derrick")
     nond_costs = calc_group_cost(nond_df, "Non-Derrick")
-
     summary = pd.DataFrame([derrick_costs, nond_costs])
 
     st.markdown("### 📊 Cost Comparison Summary")
