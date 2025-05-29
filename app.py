@@ -236,40 +236,27 @@ def render_cost_estimator(df):
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
     st.markdown("#### 📊 Cost Breakdown Pie Charts")
-    pie_col1, pie_col2 = st.columns(2)
+    pie1, pie2 = st.columns(2)
 
-    derrick_labels = ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]
-    derrick_values = [
-        derrick_cost["Dilution"], derrick_cost["Haul"], derrick_cost["Screen"],
-        derrick_cost["Equipment"], derrick_cost["Engineering"], derrick_cost["Other"]
-    ]
-    nond_labels = ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]
-    nond_values = [
-        nond_cost["Dilution"], nond_cost["Haul"], nond_cost["Screen"],
-        nond_cost["Equipment"], nond_cost["Engineering"], nond_cost["Other"]
-    ]
-
-    with pie_col1:
-        st.markdown("**Derrick Cost Breakdown**")
-        fig_d = px.pie(
-            names=derrick_labels,
-            values=derrick_values,
-            title="",
-            color_discrete_sequence=['#E6F4EA', '#C9E6D2', '#ACD8BA', '#8FCAA2', '#72BC8A', '#55AE72']
+    with pie1:
+        derrick_fig = px.pie(
+            names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"],
+            values=[derrick_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]],
+            title="Derrick Cost Breakdown",
+            color_discrete_sequence=["#1b5e20", "#2e7d32", "#388e3c", "#43a047", "#4caf50", "#66bb6a"]
         )
-        fig_d.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig_d, use_container_width=True)
+        derrick_fig.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(derrick_fig, use_container_width=True)
 
-    with pie_col2:
-        st.markdown("**Non-Derrick Cost Breakdown**")
-        fig_nd = px.pie(
-            names=nond_labels,
-            values=nond_values,
-            title="",
-            color_discrete_sequence=['#F2F2F2', '#D9D9D9', '#BFBFBF', '#A6A6A6', '#8C8C8C', '#737373']
+    with pie2:
+        nond_fig = px.pie(
+            names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"],
+            values=[nond_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]],
+            title="Non-Derrick Cost Breakdown",
+            color_discrete_sequence=["#424242", "#616161", "#757575", "#9e9e9e", "#bdbdbd", "#e0e0e0"]
         )
-        fig_nd.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig_nd, use_container_width=True)
+        nond_fig.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(nond_fig, use_container_width=True)
 
     fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison",
                       color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
