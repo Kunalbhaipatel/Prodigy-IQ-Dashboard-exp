@@ -222,8 +222,9 @@ def render_cost_estimator(df):
             "Other": other_cost
         }
 
-    derrick_df = df.copy()
-    if derrick_shakers:
+    derrick_df, nond_df = render_dual_filter(df)
+    # dynamic filter applied
+    if True:
         derrick_df = derrick_df[derrick_df["flowline_Shakers"].isin(derrick_shakers)]
     if derrick_ops:
         derrick_df = derrick_df[derrick_df["Operator"].isin(derrick_ops)]
