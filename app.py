@@ -133,6 +133,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import streamlit as st
+from io import BytesIO
+from fpdf import FPDF
+
 
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
@@ -235,6 +238,26 @@ def render_cost_estimator(df):
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
+    if st.button("📥 Download Summary as PDF"):
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt="Flowline Shaker Cost Comparison", ln=True, align="C")
+
+        for idx, row in summary.iterrows():
+            pdf.ln(10)
+            pdf.set_font("Arial", 'B', size=12)
+            pdf.cell(200, 10, txt=row['Label'], ln=True)
+            pdf.set_font("Arial", size=11)
+            for key, value in row.items():
+                if key != 'Label':
+                    pdf.cell(200, 8, txt=f"{key}: {value:.2f}", ln=True)
+
+        buffer = BytesIO()
+        pdf.output(buffer)
+        buffer.seek(0)
+        st.download_button("📄 Download PDF", data=buffer, file_name="cost_summary.pdf", mime="application/pdf")
+
     st.markdown("#### 📊 Cost Breakdown Pie Charts")
     pie1, pie2 = st.columns(2)
 
@@ -266,7 +289,6 @@ def render_cost_estimator(df):
     fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
                        color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
     st.plotly_chart(fig_depth, use_container_width=True)
-
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
