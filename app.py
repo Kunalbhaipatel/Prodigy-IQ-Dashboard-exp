@@ -133,6 +133,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import pandas as pd
+import streamlit as st
 
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
@@ -236,34 +238,49 @@ def render_cost_estimator(df):
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
-    # 📊 Charts
     col1, col2 = st.columns(2)
     col1.metric("Total Cost Saving", f"${nond_cost['Total Cost'] - derrick_cost['Total Cost']:,.0f}")
     col2.metric("Cost Per Foot Saving", f"${nond_cost['Cost/ft'] - derrick_cost['Cost/ft']:,.2f}")
     st.dataframe(summary.set_index("Label"))
 
-    # Cost per foot bar chart
     fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison",
                       color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
     st.plotly_chart(fig_cost, use_container_width=True)
 
-    # Gauge Charts
     st.markdown("#### 🎯 Efficiency Gauges")
-    for metric in ["Avg LGS%", "DSRE%"]:
-        col1, col2 = st.columns(2)
-        for idx, row in summary.iterrows():
-            fig = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=row[metric],
-                title={'text': f"{row['Label']} {metric}"},
-                gauge={'axis': {'range': [0, 100]}, 'bar': {'color': "#007635" if row["Label"] == "Derrick" else "grey"}}
-            ))
-            if row["Label"] == "Derrick":
-                col1.plotly_chart(fig, use_container_width=True)
-            else:
-                col2.plotly_chart(fig, use_container_width=True)
 
-    # Depth & DOW charts
+    for metric in ["Avg LGS%", "DSRE%"]:
+        st.markdown(f"**{metric}**")
+        col1, col2 = st.columns(2)
+
+        derrick_val = summary[summary["Label"] == "Derrick"][metric].values[0]
+        nonderrick_val = summary[summary["Label"] == "Non-Derrick"][metric].values[0]
+
+        def create_gauge(title, value, color):
+            return go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=value,
+                number={'suffix': "%"},
+                title={'text': title},
+                gauge={
+                    'axis': {'range': [0, 100]},
+                    'bar': {'color': color},
+                    'steps': [
+                        {'range': [0, 50], 'color': "#ffcccc"},
+                        {'range': [50, 75], 'color': "#fff2cc"},
+                        {'range': [75, 100], 'color': "#ccffcc"}
+                    ],
+                    'threshold': {
+                        'line': {'color': color, 'width': 4},
+                        'thickness': 0.75,
+                        'value': value
+                    }
+                }
+            ))
+
+        col1.plotly_chart(create_gauge(f"Derrick {metric}", derrick_val, "#007635"), use_container_width=True)
+        col2.plotly_chart(create_gauge(f"Non-Derrick {metric}", nonderrick_val, "grey"), use_container_width=True)
+
     st.markdown("#### 📏 Depth & Duration")
     fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
                        color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
