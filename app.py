@@ -235,6 +235,14 @@ def render_cost_estimator(df):
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
+    # Add summary metrics up top
+    delta_total = nond_cost['Total Cost'] - derrick_cost['Total Cost']
+    delta_ft = nond_cost['Cost/ft'] - derrick_cost['Cost/ft']
+
+    mcol1, mcol2 = st.columns(2)
+    mcol1.metric("Total Cost Saving", f"${delta_total:,.0f}", delta_color="inverse")
+    mcol2.metric("Cost Per Foot Saving", f"${delta_ft:,.2f}", delta_color="inverse")
+
     st.markdown("#### 📊 Cost Breakdown Pie Charts")
     pie1, pie2 = st.columns(2)
 
