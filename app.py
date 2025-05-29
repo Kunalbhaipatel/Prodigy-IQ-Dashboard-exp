@@ -245,39 +245,14 @@ def render_cost_estimator(df):
                       color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
     st.plotly_chart(fig_cost, use_container_width=True)
 
-    st.markdown("#### 🎯 Efficiency Gauges")
-
-    for metric in ["Avg LGS%", "DSRE%"]:
-        st.markdown(f"**{metric}**")
-        col1, col2 = st.columns(2)
-
-        derrick_val = summary[summary["Label"] == "Derrick"][metric].values[0]
-        nonderrick_val = summary[summary["Label"] == "Non-Derrick"][metric].values[0]
-
-        def create_gauge(title, value, color):
-            return go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=value,
-                number={'suffix': "%"},
-                title={'text': title},
-                gauge={
-                    'axis': {'range': [0, 100]},
-                    'bar': {'color': color},
-                    'steps': [
-                        {'range': [0, 50], 'color': "#ffcccc"},
-                        {'range': [50, 75], 'color': "#fff2cc"},
-                        {'range': [75, 100], 'color': "#ccffcc"}
-                    ],
-                    'threshold': {
-                        'line': {'color': color, 'width': 4},
-                        'thickness': 0.75,
-                        'value': value
-                    }
-                }
-            ))
-
-        col1.plotly_chart(create_gauge(f"Derrick {metric}", derrick_val, "#007635"), use_container_width=True)
-        col2.plotly_chart(create_gauge(f"Non-Derrick {metric}", nonderrick_val, "grey"), use_container_width=True)
+    st.markdown("#### 🎯 Efficiency Comparison")
+    lgs_col, dsre_col = st.columns(2)
+    with lgs_col:
+        st.metric("Derrick Avg LGS%", f"{summary[summary['Label'] == 'Derrick']['Avg LGS%'].values[0]:.2f}%")
+        st.metric("Non-Derrick Avg LGS%", f"{summary[summary['Label'] == 'Non-Derrick']['Avg LGS%'].values[0]:.2f}%")
+    with dsre_col:
+        st.metric("Derrick DSRE%", f"{summary[summary['Label'] == 'Derrick']['DSRE%'].values[0]:.2f}%")
+        st.metric("Non-Derrick DSRE%", f"{summary[summary['Label'] == 'Non-Derrick']['DSRE%'].values[0]:.2f}%")
 
     st.markdown("#### 📏 Depth & Duration")
     fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
