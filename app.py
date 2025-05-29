@@ -235,44 +235,16 @@ def render_cost_estimator(df):
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
-    cost_diff = nond_cost['Total Cost'] - derrick_cost['Total Cost']
-    ft_diff = nond_cost['Cost/ft'] - derrick_cost['Cost/ft']
-
-    color_total = "green" if cost_diff > 0 else "red"
-    color_perft = "green" if ft_diff > 0 else "red"
-
-    st.markdown("""
-    <div style='display: flex; gap: 1rem;'>
-        <div style='flex: 1; border: 2px solid {color_total}; border-radius: 10px; padding: 1rem;'>
-            <h4>Total Cost Saving</h4>
-            <h2 style='color: {color_total};'>${cost_diff:,.0f}</h2>
-        </div>
-        <div style='flex: 1; border: 2px solid {color_perft}; border-radius: 10px; padding: 1rem;'>
-            <h4>Cost Per Foot Saving</h4>
-            <h2 style='color: {color_perft};'>${ft_diff:,.2f}</h2>
-        </div>
-    </div>
-    """.format(color_total=color_total, color_perft=color_perft, cost_diff=cost_diff, ft_diff=ft_diff), unsafe_allow_html=True)
-
-    st.markdown("### 📋 Summary Metrics")
-    for idx, row in summary.iterrows():
-        label_color = "#007635" if row['Label'] == "Derrick" else "grey"
-        st.markdown(f"""
-        <div style='border: 2px solid {label_color}; border-radius: 10px; padding: 1rem; margin-bottom: 1rem;'>
-            <h4 style='color:{label_color};'>{row['Label']}</h4>
-            <p><b>Cost per Foot:</b> ${row['Cost/ft']:.2f}</p>
-            <p><b>Total Cost:</b> ${row['Total Cost']:,.0f}</p>
-            <p><b>Dilution:</b> ${row['Dilution']:,.0f}</p>
-            <p><b>Haul:</b> ${row['Haul']:,.0f}</p>
-            <p><b>Screen:</b> ${row['Screen']:,.0f}</p>
-            <p><b>Equipment:</b> ${row['Equipment']:,.0f}</p>
-            <p><b>Engineering:</b> ${row['Engineering']:,.0f}</p>
-            <p><b>Other:</b> ${row['Other']:,.0f}</p>
-            <p><b>Avg LGS%:</b> {row['Avg LGS%']:.2f}%</p>
-            <p><b>DSRE%:</b> {row['DSRE%']:.2f}%</p>
-            <p><b>Depth:</b> {row['Depth']:,.0f} ft</p>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("#### 📊 Cost Breakdown by Category")
+    for row in [derrick_cost, nond_cost]:
+        color = "#007635" if row['Label'] == "Derrick" else "grey"
+        fig = px.pie(
+            names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"],
+            values=[row["Dilution"], row["Haul"], row["Screen"], row["Equipment"], row["Engineering"], row["Other"]],
+            title=f"{row['Label']} Cost Distribution",
+            color_discrete_sequence=px.colors.sequential.Greens if row['Label'] == "Derrick" else px.colors.sequential.Greys
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
     fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison",
                       color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
