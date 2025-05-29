@@ -140,42 +140,88 @@ import pandas as pd
 import streamlit as st
 import pandas as pd
 
+def render_dual_filter(df):
+    derrick_col, nond_col = st.columns(2)
 
-def get_filtered_cost_data(df):
+    with derrick_col:
+        st.markdown("### 🟢 Derrick")
+        derrick_shaker = st.selectbox("Select flowline Shaker", sorted(df["flowline_Shakers"].dropna().unique()), key="d_shaker")
+        derrick_df = df[df["flowline_Shakers"] == derrick_shaker]
+
+        derrick_operator = st.selectbox("Select Operators", ["All"] + sorted(derrick_df["Operator"].dropna().unique()), key="d_op")
+        derrick_contractor = st.selectbox("Select Contractors", ["All"] + sorted(derrick_df["Contractor"].dropna().unique()), key="d_cont")
+        derrick_well = st.selectbox("Select Well Name", ["All"] + sorted(derrick_df["Well_Name"].dropna().unique()), key="d_well")
+
+        if derrick_operator != "All":
+            derrick_df = derrick_df[derrick_df["Operator"] == derrick_operator]
+        if derrick_contractor != "All":
+            derrick_df = derrick_df[derrick_df["Contractor"] == derrick_contractor]
+        if derrick_well != "All":
+            derrick_df = derrick_df[derrick_df["Well_Name"] == derrick_well]
+
+    with nond_col:
+        st.markdown("### 🟣 Non-Derrick")
+        nond_shaker = st.selectbox("Select flowline Shaker", sorted(df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
+        nond_df = df[df["flowline_Shakers"] == nond_shaker]
+
+        nond_operator = st.selectbox("Select Operators", ["All"] + sorted(nond_df["Operator"].dropna().unique()), key="nd_op")
+        nond_contractor = st.selectbox("Select Contractors", ["All"] + sorted(nond_df["Contractor"].dropna().unique()), key="nd_cont")
+        nond_well = st.selectbox("Select Well Name", ["All"] + sorted(nond_df["Well_Name"].dropna().unique()), key="nd_well")
+
+        if nond_operator != "All":
+            nond_df = nond_df[nond_df["Operator"] == nond_operator]
+        if nond_contractor != "All":
+            nond_df = nond_df[nond_df["Contractor"] == nond_contractor]
+        if nond_well != "All":
+            nond_df = nond_df[nond_df["Well_Name"] == nond_well]
+
+    # Optional configurations inside toggle containers
+    derrick_config, nond_config = {}, {}
+
+    with st.expander("🎯 Derrick Cost Configuration"):
+        derrick_config["dil_rate"] = st.number_input("Dilution Cost Rate ($/unit)", value=100, key="d_dil")
+        derrick_config["haul_rate"] = st.number_input("Haul-Off Cost Rate ($/unit)", value=20, key="d_haul")
+        derrick_config["screen_price"] = st.number_input("Screen Price", value=500, key="d_scr_price")
+        derrick_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="d_scr_cnt")
+        derrick_config["equip_cost"] = st.number_input("Total Equipment Cost", value=100000, key="d_equip")
+        derrick_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="d_shkrs")
+        derrick_config["shaker_life"] = st.number_input("Shaker Life (Years)", value=7, key="d_life")
+        derrick_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="d_eng")
+        derrick_config["other_cost"] = st.number_input("Other Cost", value=500, key="d_other")
+
+    with st.expander("🎯 Non-Derrick Cost Configuration"):
+        nond_config["dil_rate"] = st.number_input("Dilution Cost Rate ($/unit)", value=100, key="nd_dil")
+        nond_config["haul_rate"] = st.number_input("Haul-Off Cost Rate ($/unit)", value=20, key="nd_haul")
+        nond_config["screen_price"] = st.number_input("Screen Price", value=500, key="nd_scr_price")
+        nond_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="nd_scr_cnt")
+        nond_config["equip_cost"] = st.number_input("Total Equipment Cost", value=100000, key="nd_equip")
+        nond_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="nd_shkrs")
+        nond_config["shaker_life"] = st.number_input("Shaker Life (Years)", value=7, key="nd_life")
+        nond_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="nd_eng")
+        nond_config["other_cost"] = st.number_input("Other Cost", value=500, key="nd_other")
+
+    return derrick_df, nond_df, derrick_config, nond_config
+
+def render_cost_estimator(df):
+    st.title("💰 Flowline Shaker Cost Comparison")
+
     col_d, col_nd = st.columns(2)
-
     with col_d:
         st.subheader("🟩 Derrick")
+        derrick_shakers = st.multiselect("Select flowline Shakers", sorted(df["flowline_Shakers"].dropna().unique()), key="derrick_shaker")
+        derrick_ops = st.multiselect("Select Operators", sorted(df["Operator"].dropna().unique()), key="derrick_op")
         derrick_contracts = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="derrick_cont")
         derrick_wells = st.multiselect("Select Well Name", sorted(df["Well_Name"].dropna().unique()), key="derrick_well")
 
     with col_nd:
         st.subheader("⬜ Non-Derrick")
+        nond_shakers = st.multiselect("Select flowline Shakers", sorted(df["flowline_Shakers"].dropna().unique()), key="nonderrick_shaker")
+        nond_ops = st.multiselect("Select Operators", sorted(df["Operator"].dropna().unique()), key="nonderrick_op")
         nond_contracts = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="nonderrick_cont")
         nond_wells = st.multiselect("Select Well Name", sorted(df["Well_Name"].dropna().unique()), key="nonderrick_well")
 
-    derrick_df = df.copy()
-    if derrick_contracts:
-        derrick_df = derrick_df[derrick_df["Contractor"].isin(derrick_contracts)]
-    if derrick_wells:
-        derrick_df = derrick_df[derrick_df["Well_Name"].isin(derrick_wells)]
-
-    nond_df = df.copy()
-    if nond_contracts:
-        nond_df = nond_df[nond_df["Contractor"].isin(nond_contracts)]
-    if nond_wells:
-        nond_df = nond_df[nond_df["Well_Name"].isin(nond_wells)]
-
-    return derrick_df, nond_df
-
-def render_cost_estimator(df):
-    st.title("💰 Flowline Shaker Cost Comparison")
-
-    # Apply clean filters
-    derrick_df, nond_df = get_filtered_cost_data(df)
-
-    # Configuration
     st.markdown("### 🎯 Configuration")
+
     col1, col2 = st.columns(2)
     with col1:
         dil_rate = st.number_input("Dilution Cost Rate ($/unit)", value=100)
@@ -216,8 +262,30 @@ def render_cost_estimator(df):
             "Other": other_cost
         }
 
+    derrick_df, nond_df, derrick_config, nond_config = render_dual_filter(df)
+    # dynamic filter applied
+    if True:
+        derrick_df = derrick_df[derrick_df["flowline_Shakers"].isin(derrick_shakers)]
+    if derrick_ops:
+        derrick_df = derrick_df[derrick_df["Operator"].isin(derrick_ops)]
+    if derrick_contracts:
+        derrick_df = derrick_df[derrick_df["Contractor"].isin(derrick_contracts)]
+    if derrick_wells:
+        derrick_df = derrick_df[derrick_df["Well_Name"].isin(derrick_wells)]
+
+    nond_df = df.copy()
+    if nond_shakers:
+        nond_df = nond_df[nond_df["flowline_Shakers"].isin(nond_shakers)]
+    if nond_ops:
+        nond_df = nond_df[nond_df["Operator"].isin(nond_ops)]
+    if nond_contracts:
+        nond_df = nond_df[nond_df["Contractor"].isin(nond_contracts)]
+    if nond_wells:
+        nond_df = nond_df[nond_df["Well_Name"].isin(nond_wells)]
+
     derrick_costs = calc_group_cost(derrick_df, "Derrick")
     nond_costs = calc_group_cost(nond_df, "Non-Derrick")
+
     summary = pd.DataFrame([derrick_costs, nond_costs])
 
     st.markdown("### 📊 Cost Comparison Summary")
@@ -225,9 +293,7 @@ def render_cost_estimator(df):
     colA.metric("Total Cost Saving", f"${nond_costs['Total Cost'] - derrick_costs['Total Cost']:,.0f}")
     colB.metric("Cost Per Foot Saving", f"${nond_costs['Cost/ft'] - derrick_costs['Cost/ft']:,.2f}")
 
-    st.dataframe(summary.set_index("Label").style
-                 .format("${:,.0f}", subset=["Total Cost", "Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"])
-                 .format("{:.2f}", subset=["Cost/ft"]))
+    st.dataframe(summary.set_index("Label").style.format("${:,.0f}", subset=["Total Cost", "Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]).format("{:.2f}", subset=["Cost/ft"]))
 
     st.markdown("### 📉 Dilution & Wastage Cost Breakdown")
     fig1 = px.bar(summary, x="Label", y=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"], barmode="stack", title="Cost Components")
