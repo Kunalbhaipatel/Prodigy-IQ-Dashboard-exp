@@ -229,39 +229,41 @@ def render_cost_estimator(df):
             "Avg LGS%": (sub_df["LGS"].mean() * 100) if "LGS" in sub_df.columns else 0,
             "DSRE%": (sub_df["DSRE"].mean() * 100) if "DSRE" in sub_df.columns else 0,
             "Depth": sub_df["MD Depth"].max() if "MD Depth" in sub_df.columns else 0,
-            "DOW": sub_df["Days_on_Well"].mean() if "Days_on_Well" in sub_df.columns else 0,
         }
 
     derrick_cost = calc_cost(derrick_df, derrick_config, "Derrick")
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
-    col1, col2 = st.columns(2)
-    col1.metric("Total Cost Saving", f"${nond_cost['Total Cost'] - derrick_cost['Total Cost']:,.0f}")
-    col2.metric("Cost Per Foot Saving", f"${nond_cost['Cost/ft'] - derrick_cost['Cost/ft']:,.2f}")
+    cost_diff = nond_cost['Total Cost'] - derrick_cost['Total Cost']
+    ft_diff = nond_cost['Cost/ft'] - derrick_cost['Cost/ft']
+
+    color_total = "green" if cost_diff > 0 else "red"
+    color_perft = "green" if ft_diff > 0 else "red"
+
+    st.markdown("""
+    <div style='display: flex; gap: 1rem;'>
+        <div style='flex: 1; border: 2px solid {color_total}; border-radius: 10px; padding: 1rem;'>
+            <h4>Total Cost Saving</h4>
+            <h2 style='color: {color_total};'>${cost_diff:,.0f}</h2>
+        </div>
+        <div style='flex: 1; border: 2px solid {color_perft}; border-radius: 10px; padding: 1rem;'>
+            <h4>Cost Per Foot Saving</h4>
+            <h2 style='color: {color_perft};'>${ft_diff:,.2f}</h2>
+        </div>
+    </div>
+    """.format(color_total=color_total, color_perft=color_perft, cost_diff=cost_diff, ft_diff=ft_diff), unsafe_allow_html=True)
+
     st.dataframe(summary.set_index("Label"))
 
     fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison",
                       color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
     st.plotly_chart(fig_cost, use_container_width=True)
 
-    st.markdown("#### 🎯 Efficiency Comparison")
-    lgs_col, dsre_col = st.columns(2)
-    with lgs_col:
-        st.metric("Derrick Avg LGS%", f"{summary[summary['Label'] == 'Derrick']['Avg LGS%'].values[0]:.2f}%")
-        st.metric("Non-Derrick Avg LGS%", f"{summary[summary['Label'] == 'Non-Derrick']['Avg LGS%'].values[0]:.2f}%")
-    with dsre_col:
-        st.metric("Derrick DSRE%", f"{summary[summary['Label'] == 'Derrick']['DSRE%'].values[0]:.2f}%")
-        st.metric("Non-Derrick DSRE%", f"{summary[summary['Label'] == 'Non-Derrick']['DSRE%'].values[0]:.2f}%")
-
-    st.markdown("#### 📏 Depth & Duration")
+    st.markdown("#### 📏 Depth")
     fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
                        color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
     st.plotly_chart(fig_depth, use_container_width=True)
-
-    fig_dow = px.bar(summary, x="Label", y="DOW", color="Label", title="Days on Well (DOW)",
-                     color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
-    st.plotly_chart(fig_dow, use_container_width=True)
 
 
 
