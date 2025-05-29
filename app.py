@@ -279,14 +279,28 @@ def render_cost_estimator(df):
         nond_fig.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(nond_fig, use_container_width=True)
 
-    fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison",
-                      color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
-    st.plotly_chart(fig_cost, use_container_width=True)
+    bar1, bar2 = st.columns(2)
 
-    st.markdown("#### 📏 Depth")
-    fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
-                       color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
-    st.plotly_chart(fig_depth, use_container_width=True)
+    with bar1:
+        fig_cost = px.bar(summary[summary.Label == "Derrick"], x="Label", y="Cost/ft", color="Label", title="Derrick Cost/ft",
+                          color_discrete_map={"Derrick": "#007635"})
+        st.plotly_chart(fig_cost, use_container_width=True)
+
+    with bar2:
+        fig_cost = px.bar(summary[summary.Label == "Non-Derrick"], x="Label", y="Cost/ft", color="Label", title="Non-Derrick Cost/ft",
+                          color_discrete_map={"Non-Derrick": "grey"})
+        st.plotly_chart(fig_cost, use_container_width=True)
+
+    st.markdown("#### 📏 Depth Comparison")
+    depth1, depth2 = st.columns(2)
+    with depth1:
+        fig_depth = px.bar(summary[summary.Label == "Derrick"], x="Label", y="Depth", color="Label", title="Derrick Depth",
+                           color_discrete_map={"Derrick": "#007635"})
+        st.plotly_chart(fig_depth, use_container_width=True)
+    with depth2:
+        fig_depth = px.bar(summary[summary.Label == "Non-Derrick"], x="Label", y="Depth", color="Label", title="Non-Derrick Depth",
+                           color_discrete_map={"Non-Derrick": "grey"})
+        st.plotly_chart(fig_depth, use_container_width=True)
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
