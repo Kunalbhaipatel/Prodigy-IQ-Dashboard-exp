@@ -235,13 +235,27 @@ def render_cost_estimator(df):
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
-    # Add summary metrics up top
+    # Styled summary cards with color logic
     delta_total = nond_cost['Total Cost'] - derrick_cost['Total Cost']
     delta_ft = nond_cost['Cost/ft'] - derrick_cost['Cost/ft']
 
-    mcol1, mcol2 = st.columns(2)
-    mcol1.metric("Total Cost Saving", f"${delta_total:,.0f}", delta_color="inverse")
-    mcol2.metric("Cost Per Foot Saving", f"${delta_ft:,.2f}", delta_color="inverse")
+    color_total = "#d4edda" if delta_total >= 0 else "#f8d7da"
+    color_ft = "#d4edda" if delta_ft >= 0 else "#f8d7da"
+    font_total = "green" if delta_total >= 0 else "red"
+    font_ft = "green" if delta_ft >= 0 else "red"
+
+    st.markdown(f"""
+        <div style='display: flex; gap: 1rem; margin-top: 1rem;'>
+            <div style='flex: 1; background-color: {color_total}; border-radius: 10px; padding: 1rem; box-shadow: 3px 3px 8px rgba(0,0,0,0.1);'>
+                <h4 style='margin: 0; color: {font_total};'>💵 Total Cost Saving</h4>
+                <p style='font-size: 24px; font-weight: bold; color: {font_total}; margin: 0;'>${delta_total:,.0f}</p>
+            </div>
+            <div style='flex: 1; background-color: {color_ft}; border-radius: 10px; padding: 1rem; box-shadow: 3px 3px 8px rgba(0,0,0,0.1);'>
+                <h4 style='margin: 0; color: {font_ft};'>📏 Cost Per Foot Saving</h4>
+                <p style='font-size: 24px; font-weight: bold; color: {font_ft}; margin: 0;'>${delta_ft:,.2f}</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("#### 📊 Cost Breakdown Pie Charts")
     pie1, pie2 = st.columns(2)
@@ -266,16 +280,15 @@ def render_cost_estimator(df):
         nond_fig.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(nond_fig, use_container_width=True)
 
-    # Column bar charts side by side
     st.markdown("#### 📉 Cost per Foot and Depth Comparison")
-    colbar1, colbar2 = st.columns(2)
+    bar1, bar2 = st.columns(2)
 
-    with colbar1:
+    with bar1:
         fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison",
                           color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
         st.plotly_chart(fig_cost, use_container_width=True)
 
-    with colbar2:
+    with bar2:
         fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
                            color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
         st.plotly_chart(fig_depth, use_container_width=True)
