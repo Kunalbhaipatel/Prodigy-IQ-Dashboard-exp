@@ -57,7 +57,7 @@ def full_filter_sidebar(df):
 
     return filtered
 
-# ------------------------- PAGE 1 -------------------------
+# ------------------------- PAGE 1: MULTI-WELL -------------------------
 def render_multi_well(df):
     st.title("🚀 Prodigy IQ Multi-Well Dashboard")
     filtered_df = full_filter_sidebar(df)
@@ -89,7 +89,7 @@ def render_multi_well(df):
     fig_map.update_layout(mapbox_style="open-street-map")
     st.plotly_chart(fig_map, use_container_width=True)
 
-# ------------------------- PAGE 2 -------------------------
+# ------------------------- PAGE 2: SALES -------------------------
 def render_sales_analysis(df):
     st.title("📈 Prodigy IQ Sales Intelligence")
     filtered_df = full_filter_sidebar(df)
@@ -127,81 +127,110 @@ def render_sales_analysis(df):
     fig_map.update_layout(mapbox_style="open-street-map")
     st.plotly_chart(fig_map, use_container_width=True)
 
-# ------------------------- PAGE 3 (COST ESTIMATOR) -------------------------
+# ------------------------- PAGE 3: COST ESTIMATOR -------------------------
 
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
 def render_cost_estimator(df):
-    st.title("💰 Flowline Shaker Cost Estimator")
+    st.title("💰 Flowline Shaker Cost Comparison")
 
-    # Shared Filters
-    st.sidebar.header("Filters")
-    operator = st.sidebar.selectbox("Operator", ["All"] + sorted(df["Operator"].dropna().unique()))
-    contractor = st.sidebar.selectbox("Contractor", ["All"] + sorted(df["Contractor"].dropna().unique()))
-    shaker = st.sidebar.selectbox("Shaker Type", ["All"] + sorted(df["flowline_Shakers"].dropna().astype(str).unique()))
+    col_d, col_nd = st.columns(2)
+    with col_d:
+        st.subheader("🟩 Derrick")
+        derrick_shakers = st.multiselect("Select flowline Shakers", sorted(df["flowline_Shakers"].dropna().unique()), key="derrick_shaker")
+        derrick_ops = st.multiselect("Select Operators", sorted(df["Operator"].dropna().unique()), key="derrick_op")
+        derrick_contracts = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="derrick_cont")
+        derrick_wells = st.multiselect("Select Well Name", sorted(df["Well_Name"].dropna().unique()), key="derrick_well")
 
-    filtered = df.copy()
-    if operator != "All":
-        filtered = filtered[filtered["Operator"] == operator]
-    if contractor != "All":
-        filtered = filtered[filtered["Contractor"] == contractor]
-    if shaker != "All":
-        filtered = filtered[filtered["flowline_Shakers"].astype(str) == shaker]
+    with col_nd:
+        st.subheader("⬜ Non-Derrick")
+        nond_shakers = st.multiselect("Select flowline Shakers", sorted(df["flowline_Shakers"].dropna().unique()), key="nonderrick_shaker")
+        nond_ops = st.multiselect("Select Operators", sorted(df["Operator"].dropna().unique()), key="nonderrick_op")
+        nond_contracts = st.multiselect("Select Contractors", sorted(df["Contractor"].dropna().unique()), key="nonderrick_cont")
+        nond_wells = st.multiselect("Select Well Name", sorted(df["Well_Name"].dropna().unique()), key="nonderrick_well")
 
-    # Aggregate Values
-    total_dil = filtered["Total_Dil"].sum()
-    haul_off = filtered["Haul_OFF"].sum()
-    int_length = filtered["IntLength"].sum()
+    st.markdown("### 🎯 Configuration")
 
-    st.subheader("Calculated Inputs from Filtered Data")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Dilution", f"{total_dil:,.0f}")
-    col2.metric("Total Haul-Off", f"{haul_off:,.0f}")
-    col3.metric("Interval Length", f"{int_length:,.0f} ft")
-
-    # Manual Overrides
-    st.subheader("Custom Cost Parameters")
     col1, col2 = st.columns(2)
     with col1:
-        dilution_rate = st.selectbox("Dilution Rate ($/unit)", [100, 200, 300, 500], index=0)
-        haul_rate = st.selectbox("Haul-Off Rate ($/unit)", [20, 30, 50], index=0)
-        equipment_cost = st.number_input("Equipment Cost", value=100000)
-        rig_use_per_year = st.slider("Shakers used/year", 1, 12, 6)
-        shaker_life = st.slider("Shaker Life Expectancy (years)", 1, 10, 7)
-
+        dil_rate = st.number_input("Dilution Cost Rate ($/unit)", value=100)
+        haul_rate = st.number_input("Haul-Off Cost Rate ($/unit)", value=20)
     with col2:
-        screen_used = st.slider("Screens Used per Rig", 1, 10, 1)
         screen_price = st.number_input("Screen Price", value=500)
-        eng_rate = st.number_input("Engineering Day Rate", value=1000)
+        num_screens = st.number_input("Screens used per rig", value=1)
+    col3, col4 = st.columns(2)
+    with col3:
+        equip_cost = st.number_input("Total Equipment Cost", value=100000)
+        num_shakers = st.number_input("Number of Shakers Installed", value=3)
+    with col4:
+        shaker_life = st.number_input("Shaker Life (Years)", value=7)
+        eng_cost = st.number_input("Engineering Day Rate", value=1000)
         other_cost = st.number_input("Other Cost", value=500)
 
-    # Calculations
-    dilution_cost = dilution_rate * total_dil
-    haul_cost = haul_rate * haul_off
-    equip_cost = equipment_cost / (shaker_life * rig_use_per_year)
-    screen_cost = screen_used * screen_price
-    total_cost = dilution_cost + haul_cost + equip_cost + screen_cost + eng_rate + other_cost
-    cost_per_foot = total_cost / int_length if int_length else 0
+    def calc_group_cost(sub_df, label):
+        td = sub_df["Total_Dil"].sum()
+        ho = sub_df["Haul_OFF"].sum()
+        intlen = sub_df["IntLength"].sum()
 
-    st.subheader("📊 Cost Summary")
-    colA, colB, colC = st.columns(3)
-    colA.metric("Dilution Cost", f"${dilution_cost:,.0f}")
-    colB.metric("Haul-Off Cost", f"${haul_cost:,.0f}")
-    colC.metric("Equipment Cost", f"${equip_cost:,.0f}")
-    colA.metric("Screen Cost", f"${screen_cost:,.0f}")
-    colB.metric("Other Cost", f"${other_cost:,.0f}")
-    colC.metric("Engineering Cost", f"${eng_rate:,.0f}")
+        dilution = dil_rate * td
+        hauloff = haul_rate * ho
+        screen = screen_price * num_screens
+        equipment = (equip_cost * num_shakers) / shaker_life
+        total = dilution + hauloff + screen + equipment + eng_cost + other_cost
+        per_ft = total / intlen if intlen else 0
 
-    st.markdown("----")
-    st.metric("Cumulative Cost", f"${total_cost:,.0f}")
-    st.metric("Cost Per Foot", f"${cost_per_foot:,.2f}/ft")
+        return {
+            "Label": label,
+            "Total Cost": total,
+            "Cost/ft": per_ft,
+            "Dilution": dilution,
+            "Haul": hauloff,
+            "Screen": screen,
+            "Equipment": equipment,
+            "Engineering": eng_cost,
+            "Other": other_cost
+        }
 
-    # Optional savings logic (compare vs baseline)
-    baseline_cost = 260320
-    savings = baseline_cost - total_cost
-    color = "green" if savings > 0 else "red"
-    st.markdown(f"### 💰 Estimated Savings vs. Baseline: <span style='color:{color}; font-weight:bold;'>${savings:,.0f}</span>", unsafe_allow_html=True)
+    derrick_df = df.copy()
+    if derrick_shakers:
+        derrick_df = derrick_df[derrick_df["flowline_Shakers"].isin(derrick_shakers)]
+    if derrick_ops:
+        derrick_df = derrick_df[derrick_df["Operator"].isin(derrick_ops)]
+    if derrick_contracts:
+        derrick_df = derrick_df[derrick_df["Contractor"].isin(derrick_contracts)]
+    if derrick_wells:
+        derrick_df = derrick_df[derrick_df["Well_Name"].isin(derrick_wells)]
+
+    nond_df = df.copy()
+    if nond_shakers:
+        nond_df = nond_df[nond_df["flowline_Shakers"].isin(nond_shakers)]
+    if nond_ops:
+        nond_df = nond_df[nond_df["Operator"].isin(nond_ops)]
+    if nond_contracts:
+        nond_df = nond_df[nond_df["Contractor"].isin(nond_contracts)]
+    if nond_wells:
+        nond_df = nond_df[nond_df["Well_Name"].isin(nond_wells)]
+
+    derrick_costs = calc_group_cost(derrick_df, "Derrick")
+    nond_costs = calc_group_cost(nond_df, "Non-Derrick")
+
+    summary = pd.DataFrame([derrick_costs, nond_costs])
+
+    st.markdown("### 📊 Cost Comparison Summary")
+    colA, colB = st.columns(2)
+    colA.metric("Total Cost Saving", f"${nond_costs['Total Cost'] - derrick_costs['Total Cost']:,.0f}")
+    colB.metric("Cost Per Foot Saving", f"${nond_costs['Cost/ft'] - derrick_costs['Cost/ft']:,.2f}")
+
+    st.dataframe(summary.set_index("Label").style.format("${:,.0f}", subset=["Total Cost", "Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]).format("{:.2f}", subset=["Cost/ft"]))
+
+    st.markdown("### 📉 Dilution & Wastage Cost Breakdown")
+    fig1 = px.bar(summary, x="Label", y=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"], barmode="stack", title="Cost Components")
+    st.plotly_chart(fig1, use_container_width=True)
+
+    fig2 = px.pie(summary, names="Label", values="Total Cost", title="Total Cost Distribution")
+    st.plotly_chart(fig2, use_container_width=True)
 
 
 # ------------------------- RUN APP -------------------------
