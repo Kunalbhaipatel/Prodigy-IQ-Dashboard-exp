@@ -20,25 +20,21 @@ def dynamic_filter_sidebar(df):
     st.sidebar.header("Dynamic Filters")
     filtered = df.copy()
 
-    # Operator filter
     operators = sorted(filtered["Operator"].dropna().unique().tolist())
     selected_operator = st.sidebar.selectbox("Operator", ["All"] + operators)
     if selected_operator != "All":
         filtered = filtered[filtered["Operator"] == selected_operator]
 
-    # Contractor filter
     contractors = sorted(filtered["Contractor"].dropna().unique().tolist())
     selected_contractor = st.sidebar.selectbox("Contractor", ["All"] + contractors)
     if selected_contractor != "All":
         filtered = filtered[filtered["Contractor"] == selected_contractor]
 
-    # Flowline filter
     flowlines = sorted(filtered["flowline_Shakers"].dropna().astype(str).unique().tolist())
     selected_flowline = st.sidebar.selectbox("Flowline", ["All"] + flowlines)
     if selected_flowline != "All":
         filtered = filtered[filtered["flowline_Shakers"].astype(str) == selected_flowline]
 
-    # Hole Size filter
     hole_sizes = sorted(filtered["Hole_Size"].dropna().unique().tolist())
     selected_hole = st.sidebar.selectbox("Hole Size", ["All"] + hole_sizes)
     if selected_hole != "All":
@@ -62,7 +58,7 @@ def render_multi_well(df):
     st.subheader("📊 Compare Metrics")
     selected_metric = st.selectbox("Select Metric", filtered_df.select_dtypes(include='number').columns.tolist())
     if selected_metric:
-        fig = px.bar(filtered_df, x="Well_Job_ID", y=selected_metric, color="Operator")
+        fig = px.bar(filtered_df, x="Well_Name", y=selected_metric, color="Operator")
         st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("🗺️ Well Map")
@@ -75,12 +71,11 @@ def render_multi_well(df):
 
 def render_sales_analysis(df):
     st.title("📈 Sales Analysis")
-
     filtered_df = dynamic_filter_sidebar(df)
 
-    st.subheader("📉 Time Series")
-    ts_cols = ["DSRE", "Dilution_Ratio", "Discard Ratio", "MD Depth"]
-    fig = px.line(filtered_df, x="TD_Date", y=ts_cols, title="Key Metric Trends")
+    st.subheader("📊 Time Series - Number of Wells by Date")
+    daily_wells = filtered_df.groupby("TD_Date").size().reset_index(name="Well Count")
+    fig = px.line(daily_wells, x="TD_Date", y="Well Count", title="Wells Over Time")
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("🥧 Flowline Shaker Split")
@@ -106,7 +101,7 @@ def render_sales_analysis(df):
     fig_map.update_layout(mapbox_style="open-street-map")
     st.plotly_chart(fig_map, use_container_width=True)
 
-# --- MAIN APP ---
+# MAIN
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
 load_styles()
 df = pd.read_csv("Refine Sample.csv")
