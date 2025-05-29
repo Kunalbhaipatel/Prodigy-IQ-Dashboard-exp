@@ -57,9 +57,39 @@ def full_filter_sidebar(df):
 
     return filtered
 
+def render_multi_well(df):
+    st.title("🚀 Prodigy IQ Multi-Well Dashboard")
+    filtered_df = full_filter_sidebar(df)
+
+    st.subheader("Summary Metrics")
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
+    col1.metric("📏 IntLength", f"{filtered_df['IntLength'].mean():.1f}")
+    col2.metric("🏃 ROP", f"{filtered_df['ROP'].mean():.1f}")
+    col3.metric("🧪 Dilution Ratio", f"{filtered_df['Dilution_Ratio'].mean():.2f}")
+    col4.metric("🧴 Discard Ratio", f"{filtered_df['Discard Ratio'].mean():.2f}")
+    col5.metric("🚛 Haul OFF", f"{filtered_df['Haul_OFF'].mean():.1f}")
+    col6.metric("🌡️ AMW", f"{filtered_df['AMW'].mean():.2f}")
+
+    st.subheader("📊 Compare Metrics")
+    numeric_cols = filtered_df.select_dtypes(include='number').columns.tolist()
+    exclude = ['No', 'Well_Job_ID', 'Well_Coord_Lon', 'Well_Coord_Lat', 'Hole_Size', 'IsReviewed', 'State Code', 'County Code']
+    metric_options = [col for col in numeric_cols if col not in exclude]
+
+    selected_metric = st.selectbox("Select Metric", metric_options)
+    if selected_metric:
+        fig = px.bar(filtered_df, x="Well_Name", y=selected_metric, color="Operator")
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("🗺️ Well Map")
+    fig_map = px.scatter_mapbox(
+        filtered_df.dropna(subset=["Well_Coord_Lon", "Well_Coord_Lat"]),
+        lat="Well_Coord_Lat", lon="Well_Coord_Lon", hover_name="Well_Name",
+        zoom=4, height=500)
+    fig_map.update_layout(mapbox_style="open-street-map")
+    st.plotly_chart(fig_map, use_container_width=True)
+
 def render_sales_analysis(df):
     st.title("📈 Prodigy IQ Sales Intelligence")
-
     filtered_df = full_filter_sidebar(df)
 
     st.subheader("🧭 Wells Over Time (Monthly Volume)")
@@ -101,6 +131,8 @@ load_styles()
 df = pd.read_csv("Refine Sample.csv")
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
-page = st.sidebar.radio("📂 Navigate", ["Sales Analysis"])
-if page == "Sales Analysis":
+page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis"])
+if page == "Multi-Well Comparison":
+    render_multi_well(df)
+else:
     render_sales_analysis(df)
