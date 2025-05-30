@@ -281,35 +281,42 @@ def render_cost_estimator(df):
 
 # ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
 def calculate_advanced_metrics(df):
-    return {
-        "STE": df["STE"].mean() if "STE" in df.columns else 0,
-        "CVR": df["CVR"].mean() if "CVR" in df.columns else 0,
-        "SLI": df["SLI"].mean() if "SLI" in df.columns else 0,
-        "FRC%": df["FRC%"].mean() * 100 if "FRC%" in df.columns else 0,
-        "DII": df["DII"].mean() if "DII" in df.columns else 0,
-        "FLI": df["FLI"].mean() if "FLI" in df.columns else 0,
-        "CDR": df["CDR"].mean() if "CDR" in df.columns else 0,
-        "MRE%": df["MRE%"].mean() * 100 if "MRE%" in df.columns else 0,
-        "DSL": df["DSL"].mean() if "DSL" in df.columns else 0
-    }
+    metrics = {}
+    metric_list = ["STE", "CVR", "SLI", "FRC%", "DII", "FLI", "CDR", "MRE%", "DSL"]
+
+    st.sidebar.subheader("Manual Input (If Data Missing)")
+
+    for metric in metric_list:
+        if metric in df.columns:
+            val = df[metric].mean()
+            if metric in ["FRC%", "MRE%"]:
+                val *= 100  # convert to percentage
+            metrics[metric] = val
+        else:
+            default = 0.0
+            input_val = st.sidebar.number_input(f"Enter value for {metric}", value=default, format="%.2f")
+            metrics[metric] = input_val
+
+    return metrics
 
 def render_kpi_board(metrics):
+    kpi_icons = {
+        "STE": "📈", "CVR": "🧱", "SLI": "📊", "FRC%": "💧", "DII": "⛏️",
+        "FLI": "🔄", "CDR": "🧪", "MRE%": "♻️", "DSL": "🚧"
+    }
+    units = {"FRC%": "%", "MRE%": "%"}
     cols = st.columns(3)
-    for idx, (metric, value) in enumerate(metrics.items()):
-        with cols[idx % 3]:
-            st.metric(label=metric, value=f"{value:.2f}")
 
-def render_advanced_analysis(df):
-    st.title("📌 Advanced Analysis Dashboard")
-    filtered_df = apply_shared_filters(df)
-    metrics = calculate_advanced_metrics(filtered_df)
-    render_kpi_board(metrics)
-    st.subheader("📈 Metric Distribution")
-    metric_options = list(metrics.keys())
-    metric_choice = st.selectbox("Select Metric", metric_options)
-    if metric_choice in filtered_df.columns:
-        fig = px.box(filtered_df, x="flowline_Shakers", y=metric_choice)
-        st.plotly_chart(fig, use_container_width=True)
+    for idx, (metric, value) in enumerate(metrics.items()):
+        label = f"{kpi_icons.get(metric, '')} {metric}"
+        display_val = f"{value:.2f}{units.get(metric, '')}"
+        with cols[idx % 3]:
+            st.markdown(f"""
+                <div style="border: 2px solid #ccc; border-radius: 12px; box-shadow: 2px 2px 8px rgba(0,0,0,0.1); padding: 16px; background-color: #f9f9f9;">
+                    <h4 style="margin-bottom:8px;">{label}</h4>
+                    <span style="color:green; font-size: 22px; font-weight:bold;">{display_val}</span>
+                </div>
+            """, unsafe_allow_html=True)
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
