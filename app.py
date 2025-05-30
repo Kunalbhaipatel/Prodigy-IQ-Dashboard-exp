@@ -282,97 +282,131 @@ def render_cost_estimator(df):
 # ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
 def render_advanced_analysis(df):
     st.title("📌 Advanced Analysis Dashboard")
-    filtered_df = apply_shared_filters(df)
 
-    # --- Manual Input for Missing Data ---
-    st.sidebar.header("⚙️ Manual Input (If Data Missing)")
-    total_flow_rate = st.sidebar.number_input("Enter Total Flow Rate (GPM)", value=800)
-    number_of_screens = st.sidebar.number_input("Number of Screens Used", value=3)
-    screen_area_per_screen = st.sidebar.number_input("Screen Area (sq ft)", value=2.0)
+    # Apply shared filters (same as Multi-Well)
+    st.sidebar.header("Filters")
+    search_term = st.sidebar.text_input("🔍 Search Anything").lower()
+    filtered = df.copy()
 
-    # --- Safe Division ---
-    def safe_div(numerator, denominator):
-        return numerator / denominator if denominator else 0
+    if search_term:
+        filtered = filtered[filtered.apply(
+            lambda row: row.astype(str).str.lower().str.contains(search_term).any(), axis=1)]
 
-    # --- Metric Calculation Logic ---
+    for col in ["Operator", "Contractor", "flowline_Shakers", "Hole_Size"]:
+        options = sorted(filtered[col].dropna().astype(str).unique())
+        selected = st.sidebar.selectbox(col, ["All"] + list(options), key=col)
+        if selected != "All":
+            filtered = filtered[filtered[col].astype(str) == selected]
+
+    filtered["TD_Date"] = pd.to_datetime(filtered["TD_Date"], errors="coerce")
+    year_range = st.sidebar.slider("TD Date Range", 2020, 2026, (2020, 2026))
+    filtered = filtered[(filtered["TD_Date"].dt.year >= year_range[0]) & (filtered["TD_Date"].dt.year <= year_range[1])]
+
+    depth_bins = {
+        "<5000 ft": (0, 5000), "5000–10000 ft": (5000, 10000),
+        "10000–15000 ft": (10000, 15000), "15000–20000 ft": (15000, 20000),
+        "20000–25000 ft": (20000, 25000), ">25000 ft": (25000, float("inf"))
+    }
+    selected_depth = st.sidebar.selectbox("Depth", ["All"] + list(depth_bins.keys()))
+    if selected_depth != "All":
+        low, high = depth_bins[selected_depth]
+        filtered = filtered[(filtered["MD Depth"] >= low) & (filtered["MD Depth"] < high)]
+
+    mw_bins = {
+        "<3": (0, 3), "3–6": (3, 6), "6–9": (6, 9),
+        "9–11": (9, 11), "11–14": (11, 14), "14–30": (14, 30)
+    }
+    selected_mw = st.sidebar.selectbox("Average Mud Weight", ["All"] + list(mw_bins.keys()))
+    if selected_mw != "All":
+        low, high = mw_bins[selected_mw]
+        filtered = filtered[(filtered["AMW"] >= low) & (filtered["AMW"] < high)]
+
+    # Drop rows with missing critical data
+    filtered = filtered.dropna(subset=["MD Depth", "IntLength", "Drilling_Hours"], how="any")
+
+    # Manual fallback values
+    st.sidebar.header("🛠️ Manual Input (If Data Missing)")
+    manual_inputs = {
+        "STE": st.sidebar.number_input("Enter value for STE", value=0.0),
+        "CVR": st.sidebar.number_input("Enter value for CVR", value=0.0),
+        "SLI": st.sidebar.number_input("Enter value for SLI", value=0.0),
+        "FRC%": st.sidebar.number_input("Enter value for FRC%", value=0.0),
+        "DII": st.sidebar.number_input("Enter value for DII", value=0.0),
+        "FLI": st.sidebar.number_input("Enter value for FLI", value=0.0),
+        "CDR": st.sidebar.number_input("Enter value for CDR", value=0.0),
+        "MRE%": st.sidebar.number_input("Enter value for MRE%", value=0.0),
+        "DSL": st.sidebar.number_input("Enter value for DSL", value=0.0)
+    }
+
+    def safe_div(n, d):
+        return n / d if d else 0
+
     def calculate_advanced_metrics(df):
-        sce = df["Total_SCE"].sum() if "Total_SCE" in df.columns else 0
-        intlen = df["IntLength"].sum()
-        haul = df["Haul_OFF"].sum()
-        flow_total = total_flow_rate
-        screen_total_area = number_of_screens * screen_area_per_screen
-        base_oil = df["Base_Oil"].sum()
-        water = df["Water"].sum()
-        chemicals = df["Chemicals"].sum()
-        drilling_hours = df["Drilling_Hours"].sum() if "Drilling_Hours" in df.columns else 1
-        hole_size = df["Hole_Size"].mean() if "Hole_Size" in df.columns else 8.5
-        rop = df["ROP"].mean()
+        try:
+            return {
+                "STE": safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100 if "Total_SCE" in df.columns else manual_inputs["STE"],
+                "CVR": safe_div(df["Haul_OFF"].sum(), df["IntLength"].sum()) or manual_inputs["CVR"],
+                "SLI": safe_div(800, 3 * 2.0) or manual_inputs["SLI"],
+                "FRC%": safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100 if "Total_SCE" in df.columns else manual_inputs["FRC%"],
+                "DII": safe_div(df["ROP"].mean(), df["Hole_Size"].mean()) if "Hole_Size" in df.columns else manual_inputs["DII"],
+                "FLI": safe_div(df[["Base_Oil", "Water", "Chemicals"]].sum().sum(), df["IntLength"].sum()) or manual_inputs["FLI"],
+                "CDR": safe_div(df["Chemicals"].sum(), df["IntLength"].sum()) or manual_inputs["CDR"],
+                "MRE%": 100 - (safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100) if "Total_SCE" in df.columns else manual_inputs["MRE%"],
+                "DSL": 100 - (safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100) if "Total_SCE" in df.columns else manual_inputs["DSL"]
+            }
+        except:
+            return manual_inputs
 
-        return {
-            "STE": safe_div(sce, sce) * 100,  # fallback as 100%
-            "CVR": safe_div(haul, intlen),
-            "SLI": safe_div(flow_total, screen_total_area),
-            "FRC%": safe_div(sce, sce) * 100,
-            "DII": safe_div(rop, hole_size),
-            "FLI": safe_div(base_oil + water + chemicals, intlen),
-            "CDR": safe_div(chemicals, intlen),
-            "MRE%": 100 - safe_div(sce, sce) * 100,
-            "DSL": 100 - (safe_div(sce, sce) * 100)
-        }
+    metrics = calculate_advanced_metrics(filtered)
 
-    metrics = calculate_advanced_metrics(filtered_df)
+    # KPI BOARD
+    icons = {
+        "STE": "📈", "CVR": "🧱", "SLI": "📊", "FRC%": "💧", "DII": "⛏️",
+        "FLI": "🔄", "CDR": "🧪", "MRE%": "♻️", "DSL": "🚧"
+    }
+    units = {"FRC%": "%", "MRE%": "%", "DSL": "%"}
+    st.markdown("### 🧮 Metrics Summary")
+    colz = st.columns(3)
+    for idx, (metric, val) in enumerate(metrics.items()):
+        with colz[idx % 3]:
+            color = "green" if val >= 0 else "red"
+            suffix = units.get(metric, "")
+            st.markdown(f"""
+                <div style="border:2px solid #ccc; border-radius:12px; box-shadow:2px 2px 8px rgba(0,0,0,0.1); padding:16px; background-color:#f9f9f9;">
+                    <h4>{icons.get(metric, '')} {metric}</h4>
+                    <span style="color:{color}; font-size:22px; font-weight:bold;">{val:.2f}{suffix}</span>
+                </div>
+            """, unsafe_allow_html=True)
 
-    # --- KPI Cards ---
-    def render_kpi_board(metrics):
-        icons = {
-            "STE": "📈", "CVR": "🧱", "SLI": "📊", "FRC%": "💧", "DII": "⛏️",
-            "FLI": "🔄", "CDR": "🧪", "MRE%": "♻️", "DSL": "🚧"
-        }
-        units = {"FRC%": "%", "MRE%": "%", "DSL": "%"}
-        cols = st.columns(3)
-        for idx, (metric, val) in enumerate(metrics.items()):
-            with cols[idx % 3]:
-                unit = units.get(metric, "")
-                color = "green" if val >= 0 else "red"
-                st.markdown(f"""
-                    <div style="border:2px solid #ccc; border-radius:12px; box-shadow:2px 2px 8px rgba(0,0,0,0.1); padding:16px; background-color:#f9f9f9;">
-                        <h4>{icons.get(metric, '')} {metric}</h4>
-                        <span style="color:{color}; font-size:22px; font-weight:bold;">{val:.2f}{unit}</span>
-                    </div>
-                """, unsafe_allow_html=True)
-
-    render_kpi_board(metrics)
-
-    # --- Normalized Outputs ---
-    st.subheader("📐 Normalized Metrics")
-    drilled_ft = filtered_df["IntLength"].sum()
-    drilled_hr = filtered_df["Drilling_Hours"].sum() if "Drilling_Hours" in filtered_df.columns else 1
-
-    normalized_data = {
+    # Normalization
+    st.subheader("📐 Normalized Metrics (per foot & hour)")
+    drilled_ft = filtered["IntLength"].sum()
+    drilled_hr = filtered["Drilling_Hours"].sum()
+    norm_data = {
         "Per Foot": {k: safe_div(v, drilled_ft) for k, v in metrics.items()},
         "Per Hour": {k: safe_div(v, drilled_hr) for k, v in metrics.items()}
     }
 
-    for label, data in normalized_data.items():
+    for label, data in norm_data.items():
         st.markdown(f"#### {label}")
-        cols = st.columns(3)
+        norm_cols = st.columns(3)
         for idx, (metric, val) in enumerate(data.items()):
-            with cols[idx % 3]:
-                st.metric(label=f"{metric} ({label})", value=f"{val:.3f}")
+            with norm_cols[idx % 3]:
+                st.metric(f"{metric} ({label})", f"{val:.3f}")
 
-    # --- Visuals ---
+    # Visuals
     st.subheader("📊 Metric Distribution by Shaker")
     metric_choice = st.selectbox("Select Metric", list(metrics.keys()))
-    if metric_choice in filtered_df.columns:
-        fig1 = px.box(filtered_df, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers", title=f"{metric_choice} by Shaker")
-        fig2 = px.box(filtered_df, x="Well_Name", y=metric_choice, color="Well_Name", title=f"{metric_choice} by Well")
+    if metric_choice in filtered.columns:
+        fig1 = px.box(filtered, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers", title=f"{metric_choice} by Shaker")
+        fig2 = px.box(filtered, x="Well_Name", y=metric_choice, color="Well_Name", title=f"{metric_choice} by Well")
         col1, col2 = st.columns(2)
         col1.plotly_chart(fig1, use_container_width=True)
         col2.plotly_chart(fig2, use_container_width=True)
 
-    # --- Export ---
+    # Export
     st.subheader("📤 Export Filtered Data")
-    st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
+    st.download_button("Download CSV", filtered.to_csv(index=False), "filtered_data.csv", "text/csv")
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
