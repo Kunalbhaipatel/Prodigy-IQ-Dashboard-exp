@@ -4,7 +4,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime
-def apply_shared_filters(df):
 
 # ------------------------- STYLING -------------------------
 def load_styles():
@@ -227,10 +226,9 @@ def calculate_costs(df):
         }
     }
 
-# ------------------------- PAGE 4: Advance Analysis -------------------------
-
 # ------------------------- PAGE 4: ADVANCED ANALYSIS -------------------------
 
+def apply_shared_filters(df):
 def calculate_advanced_metrics(df):
     return {
         "STE": df["STE"].mean() if "STE" in df.columns else 0,
