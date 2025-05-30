@@ -1,12 +1,14 @@
-
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+from sales_analysis import render_sales_analysis
+from multi_well_comparison import render_multi_well
+from advanced_analysis import render_advanced_analysis
+from cost_estimator import render_cost_estimator
 
 # ------------------------- STYLING -------------------------
 def load_styles():
-    st.markdown("""<style>
+    st.markdown("""
+    <style>
     div[data-testid="metric-container"] {
         background-color: #fff;
         padding: 1.2em;
@@ -15,27 +17,8 @@ def load_styles():
         margin: 0.5em;
         text-align: center;
     }
-    </style>""", unsafe_allow_html=True)
-
-# ------------------------- PAGE 1 -------------------------
-def render_multi_well(df):
-    st.title("🚀 Prodigy IQ Multi-Well Dashboard")
-    st.dataframe(df.head())
-
-# ------------------------- PAGE 2 -------------------------
-def render_sales_analysis(df):
-    st.title("📈 Prodigy IQ Sales Intelligence")
-    st.dataframe(df.head())
-
-# ------------------------- PAGE 3 -------------------------
-def render_advanced_analysis(df):
-    st.title("🧪 Advanced Analysis Dashboard")
-    st.dataframe(df.head())
-
-# ------------------------- PAGE 4 -------------------------
-def render_cost_estimator(df):
-    st.title("💰 Flowline Shaker Cost Comparison")
-    st.dataframe(df.head())
+    </style>
+    """, unsafe_allow_html=True)
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
