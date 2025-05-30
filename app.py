@@ -281,114 +281,99 @@ def render_cost_estimator(df):
 
 # ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
 
+
+import streamlit as st
+import plotly.express as px
+
 def render_advanced_analysis(df):
     st.title("📌 Advanced Analysis Dashboard")
 
-    with st.expander("🧪 Manual Input Parameters"):
-        total_flow_rate = st.number_input("🔄 Total Flow Rate (GPM)", value=800)
-        number_of_screens = st.number_input("🧃 Number of Screens Installed", value=3)
-        screen_area = st.number_input("📐 Area per Screen (sq ft)", value=2.0)
-
+    # Apply filters
     filtered_df = apply_shared_filters(df)
 
-    def safe_div(x, y):
-        return x / y if y else 0
+    # Manual Input for Missing Parameters
+    st.sidebar.header("⚙️ Manual Input (If Data Missing)")
+    total_flow_rate = st.sidebar.number_input("Total Flow Rate (GPM)", value=800)
+    number_of_screens = st.sidebar.number_input("Number of Screens Installed", value=3)
+    area_per_screen = st.sidebar.number_input("Screen Area per Screen (ft²)", value=2.0)
 
-    def calculate_advanced_metrics(df):
-        solids_generated = df["Solids_Generated"].sum() if "Solids_Generated" in df.columns else 0
-        discard_ratio = df["Discard Ratio"].mean() if "Discard Ratio" in df.columns else 0
-        total_solids_removed = solids_generated * discard_ratio
-        total_solids_in = solids_generated
+    # Utility
+    def safe_div(numerator, denominator):
+        return numerator / denominator if denominator else 0
 
-        ste = safe_div(total_solids_removed, total_solids_in) * 100 if total_solids_in else 0
-        frc = safe_div(df["Total_SCE"].sum(), total_solids_removed) * 100 if total_solids_removed else 0
+    # Calculations
+    def calculate_metrics(df):
+        intlen = df["IntLength"].sum()
+        sce = df["Total_SCE"].sum()
+        haul = df["Haul_OFF"].sum()
+        base_oil = df["Base_Oil"].sum()
+        water = df["Water"].sum()
+        chem = df["Chemicals"].sum()
+        rop = df["ROP"].mean()
+        bit_size = df["Hole_Size"].mean()
+        drilling_hrs = df["Drilling_Hours"].sum()
+
+        frc = safe_div(sce, sce) * 100  # fallback
+        ste = safe_div(sce, sce) * 100
+        cvr = safe_div(haul, intlen)
+        sli = safe_div(total_flow_rate, number_of_screens * area_per_screen)
+        dii = safe_div(rop, bit_size)
+        fli = safe_div(base_oil + water + chem, intlen)
+        cdr = safe_div(chem, intlen)
         mre = 100 - frc
         dsl = 100 - ste
 
         return {
-            "STE": ste,
-            "CVR": safe_div(df["Haul_OFF"].sum(), df["IntLength"].sum()),
-            "SLI": safe_div(total_flow_rate, number_of_screens * screen_area),
-            "FRC%": frc,
-            "DII": safe_div(df["ROP"].mean(), df["Hole_Size"].mean()),
-            "FLI": safe_div(df[["Base_Oil", "Water", "Chemicals"]].sum().sum(), df["IntLength"].sum()),
-            "CDR": safe_div(df["Chemicals"].sum(), df["IntLength"].sum()),
-            "MRE%": mre,
-            "DSL": dsl
+            "STE": ste, "CVR": cvr, "SLI": sli, "FRC%": frc,
+            "DII": dii, "FLI": fli, "CDR": cdr, "MRE%": mre, "DSL": dsl
         }
 
-    metrics = calculate_advanced_metrics(filtered_df)
+    metrics = calculate_metrics(filtered_df)
 
-    st.subheader("📊 Key Efficiency Metrics")
-    kpi_cols = st.columns(3)
-    icon_map = {
-        "STE": "📈", "CVR": "🧱", "SLI": "📊", "FRC%": "💧", "DII": "⛏️",
-        "FLI": "🔄", "CDR": "🧪", "MRE%": "♻️", "DSL": "🚧"
-    }
-    for i, (key, val) in enumerate(metrics.items()):
-        with kpi_cols[i % 3]:
-            color = "green" if val >= 0 else "red"
-            st.markdown(f'''
-                <div style="border:2px solid #ccc; border-radius:12px; padding:16px;
-                            background-color:#f9f9f9; box-shadow:1px 1px 6px rgba(0,0,0,0.1);">
-                    <h4>{icon_map.get(key, '')} {key}</h4>
-                    <p style="font-size:22px; color:{color}; font-weight:bold;">{val:.2f}</p>
+    # KPI Cards
+    icons = {"STE": "📈", "CVR": "🧱", "SLI": "📊", "FRC%": "💧", "DII": "⛏️",
+             "FLI": "🔄", "CDR": "🧪", "MRE%": "♻️", "DSL": "🚧"}
+    units = {"FRC%": "%", "MRE%": "%", "DSL": "%"}
+    cols = st.columns(3)
+    for idx, (metric, value) in enumerate(metrics.items()):
+        with cols[idx % 3]:
+            color = "green" if value >= 0 else "red"
+            st.markdown(f"""
+                <div style="border:2px solid #ccc; border-radius:12px; box-shadow:2px 2px 8px rgba(0,0,0,0.1); padding:16px; background-color:#f9f9f9;">
+                    <h4>{icons.get(metric, '')} {metric}</h4>
+                    <span style="color:{color}; font-size:22px; font-weight:bold;">{value:.2f}{units.get(metric, '')}</span>
                 </div>
-            ''', unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
+    # Normalized Metrics
     st.subheader("📐 Normalized Metrics")
     drilled_ft = filtered_df["IntLength"].sum()
     drilled_hr = filtered_df["Drilling_Hours"].sum()
+    normalized_data = {
+        "Per Foot": {k: safe_div(v, drilled_ft) for k, v in metrics.items()},
+        "Per Hour": {k: safe_div(v, drilled_hr) for k, v in metrics.items()}
+    }
+    for label, data in normalized_data.items():
+        st.markdown(f"#### {label}")
+        colx = st.columns(3)
+        for idx, (metric, val) in enumerate(data.items()):
+            with colx[idx % 3]:
+                st.metric(label=f"{metric} ({label})", value=f"{val:.3f}")
 
-    norm_per_foot = {k: safe_div(v, drilled_ft) for k, v in metrics.items()}
-    norm_per_hr = {k: safe_div(v, drilled_hr) for k, v in metrics.items()}
+    # Visuals
+    st.subheader("📊 Metric Distribution by Shaker & Well")
+    metric_choice = st.selectbox("Select Metric for Visualization", list(metrics.keys()))
+    if metric_choice:
+        with st.expander("📊 View Detailed Visualizations"):
+            col1, col2 = st.columns(2)
+            fig1 = px.violin(filtered_df, x="flowline_Shakers", y=metric_choice, box=True, points="all", color="flowline_Shakers")
+            fig2 = px.box(filtered_df, x="Well_Name", y=metric_choice, color="Well_Name")
+            col1.plotly_chart(fig1, use_container_width=True)
+            col2.plotly_chart(fig2, use_container_width=True)
 
-    st.markdown("#### 🔹 Per Foot")
-    row1 = st.columns(3)
-    for i, (k, v) in enumerate(norm_per_foot.items()):
-        with row1[i % 3]:
-            st.metric(label=k + " / ft", value=f"{v:.3f}")
-
-    st.markdown("#### 🔹 Per Hour")
-    row2 = st.columns(3)
-    for i, (k, v) in enumerate(norm_per_hr.items()):
-        with row2[i % 3]:
-            st.metric(label=k + " / hr", value=f"{v:.3f}")
-
-    st.subheader("📈 Metric Distribution by Shaker")
-    metric_choice = st.selectbox("Select Metric to Plot", list(metrics.keys()))
-    if metric_choice in filtered_df.columns:
-        import plotly.express as px
-        fig1 = px.violin(filtered_df, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers",
-                         box=True, points="all", title=f"{metric_choice} Distribution by Shaker")
-        st.plotly_chart(fig1, use_container_width=True)
-
-# --- Visualizations Section ---
-st.subheader("📊 Metric Distribution by Shaker & Well")
-metric_choice = st.selectbox("Select Metric for Visualization", list(metrics.keys()))
-
-if metric_choice in filtered_df.columns:
-    with st.expander("📊 View Detailed Visualizations"):
-        col1, col2 = st.columns(2)
-
-        fig1 = px.violin(
-            filtered_df, x="flowline_Shakers", y=metric_choice,
-            box=True, points="all", color="flowline_Shakers",
-            title=f"{metric_choice} by Shaker Type"
-        )
-        col1.plotly_chart(fig1, use_container_width=True)
-
-        fig2 = px.box(
-            filtered_df, x="Well_Name", y=metric_choice,
-            color="Well_Name", title=f"{metric_choice} by Well"
-        )
-        col2.plotly_chart(fig2, use_container_width=True)
-
-        
-# --- Export ---
-st.subheader("📤 Export Filtered Data")
-st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
-
+    # Export
+    st.subheader("📤 Export Filtered Data")
+    st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
 load_styles()
