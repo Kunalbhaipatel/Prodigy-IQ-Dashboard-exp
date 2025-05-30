@@ -1,11 +1,11 @@
 
+
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 
-from multi_well_comparison import render_multi_well
-from sales_analysis import render_sales_analysis
-from advanced_analysis import render_advanced_analysis
-
+# ------------------------- STYLING -------------------------
 def load_styles():
     st.markdown("""<style>
     div[data-testid="metric-container"] {
@@ -18,29 +18,37 @@ def load_styles():
     }
     </style>""", unsafe_allow_html=True)
 
+# ------------------------- PAGE 1 -------------------------
+def render_multi_well(df):
+    st.title("🚀 Prodigy IQ Multi-Well Dashboard")
+    st.write("This is the Multi-Well Comparison page.")
+    st.dataframe(df.head())
 
-# ------------------------- CONFIG & STYLING -------------------------
+# ------------------------- PAGE 2 -------------------------
+def render_sales_analysis(df):
+    st.title("📈 Prodigy IQ Sales Intelligence")
+    st.write("This is the Sales Analysis page.")
+    st.dataframe(df.head())
+
+# ------------------------- PAGE 3 -------------------------
+def render_advanced_analysis(df):
+    st.title("🧪 Advanced Analysis Dashboard")
+    st.write("This is the Advanced Analysis page.")
+    st.dataframe(df.head())
+
+# ------------------------- PAGE 4 -------------------------
+def render_cost_estimator(df):
+    st.title("💰 Flowline Shaker Cost Comparison")
+    st.write("This is the Cost Estimator page.")
+    st.dataframe(df.head())
+
+# ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
-
-def load_styles():
-    st.markdown("""<style>
-    div[data-testid="metric-container"] {
-        background-color: #fff;
-        padding: 1.2em;
-        border-radius: 15px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-        margin: 0.5em;
-        text-align: center;
-    }
-    </style>""", unsafe_allow_html=True)
-
 load_styles()
 
-# ------------------------- LOAD DATA -------------------------
 df = pd.read_csv("Refine Sample.csv")
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
-# ------------------------- NAVIGATION -------------------------
 page = st.sidebar.radio("📂 Navigate", [
     "Multi-Well Comparison",
     "Sales Analysis",
@@ -48,7 +56,6 @@ page = st.sidebar.radio("📂 Navigate", [
     "Cost Estimator"
 ])
 
-# ------------------------- ROUTING -------------------------
 if page == "Multi-Well Comparison":
     render_multi_well(df)
 elif page == "Sales Analysis":
@@ -56,8 +63,6 @@ elif page == "Sales Analysis":
 elif page == "Advanced Analysis":
     render_advanced_analysis(df)
 else:
-    # Import from within the same file if function defined here, or modularize if needed
-    from app import render_cost_estimator
     render_cost_estimator(df)
 
 # ------------------------- PAGE 1: MULTI-WELL -------------------------
