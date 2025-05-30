@@ -144,8 +144,9 @@ def calculate_costs(df):
 
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
-    derrick_df = df[df["flowline_Shakers"] == "Derrick"]
-    nond_df = df[df["flowline_Shakers"] == "Non-Derrick"]
+    filtered_df = apply_shared_filters(df)
+    derrick_df = filtered_df[filtered_df["flowline_Shakers"] == "Derrick"]
+    nond_df = filtered_df[filtered_df["flowline_Shakers"] == "Non-Derrick"]
     derrick_cost = calculate_costs(derrick_df)
     nond_cost = calculate_costs(nond_df)
 
