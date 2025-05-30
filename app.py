@@ -1,7 +1,8 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+import numpy as np
 from datetime import datetime
 
 # ------------------------- STYLING -------------------------
@@ -56,6 +57,12 @@ def full_filter_sidebar(df):
         filtered = filtered[(filtered["AMW"] >= low) & (filtered["AMW"] < high)]
 
     return filtered
+
+# Placeholder definitions for the other pages
+def render_multi_well(df): pass
+def render_sales_analysis(df): pass
+def render_cost_estimator(df): pass
+def render_advanced_analysis(df): pass
 
 # ------------------------- PAGE 1: MULTI-WELL -------------------------
 def render_multi_well(df):
@@ -376,15 +383,16 @@ def render_advanced_analysis():
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
 load_styles()
+
 df = pd.read_csv("Refine Sample.csv")
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
-page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis","Advanced Analysis", "Cost Estimator"])
+page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis", "Cost Estimator"])
 if page == "Multi-Well Comparison":
-    render_multi_well_page()
+    render_multi_well(df)
 elif page == "Sales Analysis":
-    render_sales_analysis()
+    render_sales_analysis(df)
 elif page == "Advanced Analysis":
-    render_advanced_analysis(df)  # ✅ This function must be defined and imported
+    render_advanced_analysis(df)
 else:
     render_cost_estimator(df)
