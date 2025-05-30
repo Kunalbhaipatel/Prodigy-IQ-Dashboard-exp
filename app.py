@@ -159,13 +159,21 @@ def render_cost_estimator(df):
     st.markdown(f"<h4 style='color:{color_ft}'>📏 Cost Per Foot Saving: ${delta_ft:,.2f}</h4>", unsafe_allow_html=True)
 
     pie1, pie2 = st.columns(2)
-    pie1, pie2 = st.columns(2)
-    with pie1:
-        fig1 = px.pie(values=list(derrick_cost["breakdown"].values()), names=list(derrick_cost["breakdown"].keys()))
-st.plotly_chart(fig1, use_container_width=True, key="derrick_pie")
-    with pie2:
-        fig2 = px.pie(values=list(nond_cost["breakdown"].values()), names=list(nond_cost["breakdown"].keys()))
-st.plotly_chart(fig2, use_container_width=True, key="nond_pie")
+
+with pie1:
+    fig1 = px.pie(
+        values=list(derrick_cost["breakdown"].values()),
+        names=list(derrick_cost["breakdown"].keys())
+    )
+    st.plotly_chart(fig1, use_container_width=True, key="derrick_pie")
+
+with pie2:
+    fig2 = px.pie(
+        values=list(nond_cost["breakdown"].values()),
+        names=list(nond_cost["breakdown"].keys())
+    )
+    st.plotly_chart(fig2, use_container_width=True, key="nond_pie")
+
 # ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
 def calculate_advanced_metrics(df):
     return {
