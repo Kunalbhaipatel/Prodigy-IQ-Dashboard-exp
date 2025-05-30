@@ -280,6 +280,8 @@ def render_cost_estimator(df):
         st.plotly_chart(fig_depth, use_container_width=True)
 
 # ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
+# ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
+
 def calculate_advanced_metrics(df):
     metrics = {}
     metric_list = ["STE", "CVR", "SLI", "FRC%", "DII", "FLI", "CDR", "MRE%", "DSL"]
@@ -287,10 +289,10 @@ def calculate_advanced_metrics(df):
     st.sidebar.subheader("Manual Input (If Data Missing)")
 
     for metric in metric_list:
-        if metric in df.columns:
+        if metric in df.columns and df[metric].notna().sum() > 0:
             val = df[metric].mean()
             if metric in ["FRC%", "MRE%"]:
-                val *= 100  # convert to percentage
+                val *= 100  # convert to percentage if it's a ratio
             metrics[metric] = val
         else:
             default = 0.0
@@ -305,8 +307,8 @@ def render_kpi_board(metrics):
         "FLI": "🔄", "CDR": "🧪", "MRE%": "♻️", "DSL": "🚧"
     }
     units = {"FRC%": "%", "MRE%": "%"}
-    cols = st.columns(3)
 
+    cols = st.columns(3)
     for idx, (metric, value) in enumerate(metrics.items()):
         label = f"{kpi_icons.get(metric, '')} {metric}"
         display_val = f"{value:.2f}{units.get(metric, '')}"
@@ -317,6 +319,30 @@ def render_kpi_board(metrics):
                     <span style="color:green; font-size: 22px; font-weight:bold;">{display_val}</span>
                 </div>
             """, unsafe_allow_html=True)
+
+def render_advanced_analysis(df):
+    st.title("📌 Advanced Analysis Dashboard")
+
+    # Apply shared filters
+    filtered_df = apply_shared_filters(df)
+
+    # Calculate and display metrics
+    metrics = calculate_advanced_metrics(filtered_df)
+    render_kpi_board(metrics)
+
+    # Metric Distribution Chart
+    st.subheader("📈 Metric Distribution by Shaker")
+    metric_options = list(metrics.keys())
+    metric_choice = st.selectbox("Select Metric", metric_options)
+
+    if metric_choice in filtered_df.columns:
+        fig = px.box(filtered_df, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers",
+                     title=f"{metric_choice} by Shaker Type")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Data Export
+    st.subheader("📤 Export Filtered Data")
+    st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
