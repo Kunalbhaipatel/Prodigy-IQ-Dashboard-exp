@@ -281,120 +281,115 @@ def render_cost_estimator(df):
 
 # ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
 
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+# ------------------------- FILTERS -------------------------
+def apply_shared_filters(df):
+    st.sidebar.header("📊 Shared Filters")
+    filtered = df.copy()
+    search = st.sidebar.text_input("🔍 Search").lower()
+    if search:
+        filtered = filtered[filtered.apply(lambda row: row.astype(str).str.lower().str.contains(search).any(), axis=1)]
+    for col in ["Operator", "Contractor", "flowline_Shakers", "Hole_Size"]:
+        if col in df.columns:
+            opts = sorted(filtered[col].dropna().unique().tolist())
+            sel = st.sidebar.selectbox(col, ["All"] + opts, key=col)
+            if sel != "All":
+                filtered = filtered[filtered[col] == sel]
+    return filtered
+
+# ------------------------- ADVANCED ANALYSIS -------------------------
 def render_advanced_analysis(df):
     st.title("📌 Advanced Analysis Dashboard")
-
-    # ------------------ Sidebar Filters ------------------ #
     filtered_df = apply_shared_filters(df)
 
-    with st.sidebar.expander("⚙️ Advanced Filters", expanded=True):
-        unit = st.radio("Normalize By", ["None", "Feet", "Hours", "Day"])
-        total_flow_rate = st.number_input("Total Flow Rate (GPM)", value=800)
-        number_of_screens = st.number_input("Number of Screens Installed", value=3)
-        screen_area = st.number_input("Area per Screen (sq ft)", value=2.0)
+    # Manual Inputs for fallback
+    st.sidebar.header("🛠️ Manual Input (If Data Missing)")
+    flow_rate = st.sidebar.number_input("Total Flow Rate (GPM)", value=800)
+    num_screens = st.sidebar.number_input("Number of Screens Installed", value=3)
+    screen_area = st.sidebar.number_input("Area per Screen (sq ft)", value=2.0)
 
-    # ------------------ Safe Division ------------------ #
-    def safe_div(n, d):
-        return n / d if d else 0
+    def safe_div(n, d): return n / d if d else 0
 
-    # ------------------ Metric Calculations ------------------ #
+    # METRIC CALCULATION
     metrics = {}
+    glossary = {}
 
-    try:
+    if "Solids_Gen" in filtered_df and "Discard Ratio" in filtered_df:
         metrics["Shaker Throughput Efficiency"] = safe_div(
-            (filtered_df["Solids_Generated"] * filtered_df["Discard Ratio"]).sum(),
-            filtered_df["Solids_Generated"].sum()
+            (filtered_df["Solids_Gen"] * filtered_df["Discard Ratio"]).sum(),
+            filtered_df["Solids_Gen"].sum()
         ) * 100
-    except:
-        metrics["Shaker Throughput Efficiency"] = 0
+        glossary["Shaker Throughput Efficiency"] = "Percentage of generated solids successfully removed by shaker."
+    
+    if "Haul_OFF" in filtered_df and "IntLength" in filtered_df:
+        metrics["Cuttings Volume Ratio"] = safe_div(filtered_df["Haul_OFF"].sum(), filtered_df["IntLength"].sum())
+        glossary["Cuttings Volume Ratio"] = "Volume of cuttings hauled off per foot drilled."
 
-    metrics["Cuttings Volume Ratio"] = safe_div(
-        filtered_df["Haul_OFF"].sum(),
-        filtered_df["IntLength"].sum()
-    )
+    metrics["Screen Loading Index"] = safe_div(flow_rate, num_screens * screen_area)
+    glossary["Screen Loading Index"] = "Flowrate per screen area. Indicates load per screen."
 
-    metrics["Screen Loading Index"] = safe_div(
-        total_flow_rate,
-        number_of_screens * screen_area
-    )
+    if "Total_SCE" in filtered_df:
+        metrics["Fluid Retention on Cuttings (%)"] = safe_div(filtered_df["Total_SCE"].sum(), filtered_df["Total_SCE"].sum()) * 100
+        glossary["Fluid Retention on Cuttings (%)"] = "Proportion of fluid retained on cuttings during separation."
 
-    try:
-        metrics["Fluid Retention on Cuttings (%)"] = safe_div(
-            (filtered_df["Discard Ratio"] * filtered_df["TLML"]).sum(),
-            filtered_df["Haul_OFF"].sum()
-        ) * 100
-    except:
-        metrics["Fluid Retention on Cuttings (%)"] = 0
+    if "ROP" in filtered_df and "Hole_Size" in filtered_df:
+        metrics["Drilling Intensity Index"] = safe_div(filtered_df["ROP"].mean(), filtered_df["Hole_Size"].mean())
+        glossary["Drilling Intensity Index"] = "Rate of penetration relative to hole size."
 
-    metrics["Drilling Intensity Index"] = safe_div(
-        filtered_df["ROP"].mean(),
-        filtered_df["Hole_Size"].mean()
-    )
+    if all(col in filtered_df for col in ["Base_Oil", "Water", "Chemicals", "IntLength"]):
+        metrics["Fluid Loading Index"] = safe_div(filtered_df[["Base_Oil", "Water", "Chemicals"]].sum().sum(), filtered_df["IntLength"].sum())
+        glossary["Fluid Loading Index"] = "Total fluids used per foot drilled."
 
-    metrics["Fluid Loading Index"] = safe_div(
-        filtered_df[["Base_Oil", "Water", "Chemicals"]].sum().sum(),
-        filtered_df["IntLength"].sum()
-    )
+    if "Chemicals" in filtered_df and "IntLength" in filtered_df:
+        metrics["Chemical Demand Rate"] = safe_div(filtered_df["Chemicals"].sum(), filtered_df["IntLength"].sum())
+        glossary["Chemical Demand Rate"] = "Amount of chemicals used per foot drilled."
 
-    metrics["Chemical Demand Rate"] = safe_div(
-        filtered_df["Chemicals"].sum(),
-        filtered_df["IntLength"].sum()
-    )
+    if "Total_SCE" in filtered_df:
+        frc = safe_div(filtered_df["Total_SCE"].sum(), filtered_df["Total_SCE"].sum()) * 100
+        metrics["Mud Retention Efficiency (%)"] = 100 - frc
+        glossary["Mud Retention Efficiency (%)"] = "Percentage of mud not retained on cuttings."
 
-    frc = metrics["Fluid Retention on Cuttings (%)"]
-    metrics["Mud Retention Efficiency (%)"] = 100 - frc
-    ste = metrics["Shaker Throughput Efficiency"]
-    metrics["Downstream Solids Loss"] = 100 - ste
+        metrics["Downstream Solids Loss"] = 100 - metrics["Shaker Throughput Efficiency"] if "Shaker Throughput Efficiency" in metrics else 0
+        glossary["Downstream Solids Loss"] = "Estimated percentage of solids lost after primary separation."
 
-    # ------------------ Unit Normalization ------------------ #
-    drilled_ft = filtered_df["IntLength"].sum()
-    drilled_hr = filtered_df["Drilling_Hours"].sum()
-    drilled_day = safe_div(drilled_hr, 24)
+    # KPI DISPLAY
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        st.markdown("### 📋 KPI Summary")
+        for k, v in metrics.items():
+            st.metric(k, f"{v:.2f}" if "%" not in k else f"{v:.2f}%")
+        st.markdown("#### 📘 Glossary")
+        for k, desc in glossary.items():
+            st.caption(f"**{k}** — {desc}")
 
-    divisor = {"Feet": drilled_ft, "Hours": drilled_hr, "Day": drilled_day}.get(unit, 1)
-    if unit != "None" and divisor:
-        for k in metrics:
-            metrics[k] = safe_div(metrics[k], divisor)
+    # CHART VISUALIZATION
+    with col2:
+        st.subheader("📊 Compare Metrics")
+        metric_choice = st.selectbox("Select Metric", list(metrics.keys()))
+        if metric_choice:
+            plot_df = filtered_df[["Well_Name", "Operator"]].drop_duplicates().copy()
+            plot_df["Metric Value"] = metrics.get(metric_choice, 0)
+            fig = px.bar(plot_df, x="Well_Name", y="Metric Value", color="Operator", title=f"{metric_choice} across Wells")
+            fig.update_layout(xaxis_tickangle=45)
+            st.plotly_chart(fig, use_container_width=True)
 
-    # ------------------ Glossary ------------------ #
-    glossary = {
-        "Shaker Throughput Efficiency": "Solids removed vs input solids.",
-        "Cuttings Volume Ratio": "Haul_OFF / Interval Length.",
-        "Screen Loading Index": "Flowrate / Total Screen Area.",
-        "Fluid Retention on Cuttings (%)": "Fluid lost on cuttings.",
-        "Drilling Intensity Index": "ROP / Bit Size.",
-        "Fluid Loading Index": "Fluid added per foot drilled.",
-        "Chemical Demand Rate": "Chemicals used per foot.",
-        "Mud Retention Efficiency (%)": "Fluid recovered vs retained.",
-        "Downstream Solids Loss": "Loss after primary separation."
-    }
-
-    # ------------------ Layout ------------------ #
-    st.subheader("📊 KPI Summary with Glossary")
-    col_sidebar, col_main = st.columns([1, 3])
-
-    with col_sidebar:
-        for metric, value in metrics.items():
-            unit_suffix = "%" if "Percentage" in metric or "%" in metric else ""
-            st.metric(label=metric, value=f"{value:.2f}{unit_suffix}")
-
-    with col_main:
-        selected = st.selectbox("Choose Metric to Chart", list(metrics.keys()))
-        chart_df = filtered_df[["Well_Name", "Operator"]].drop_duplicates().copy()
-        chart_df["Metric Value"] = metrics.get(selected, 0)
-        fig = px.bar(chart_df, x="Well_Name", y="Metric Value", color="Operator", title=f"{selected} by Well")
-        fig.update_layout(xaxis_title="Well", yaxis_title=selected, xaxis_tickangle=45)
-        st.plotly_chart(fig, use_container_width=True)
-
-        st.markdown(f"📘 **Glossary:** {glossary.get(selected)}")
-
-    # ------------------ Export ------------------ #
+    # EXPORT
     st.subheader("📤 Export Filtered Data")
     st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
+
+# ------------------------- RUN APP -------------------------
+st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
+
+df = pd.read_csv("Refine Sample.csv")
+df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors="coerce")
+
+page = st.sidebar.radio("📂 Navigate", ["Advanced Analysis"])
+if page == "Advanced Analysis":
+    render_advanced_analysis(df)
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
