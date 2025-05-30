@@ -283,74 +283,93 @@ def render_cost_estimator(df):
 def render_advanced_analysis(df):
     st.title("📌 Advanced Analysis Dashboard")
 
-    # Shared filters
+    # Apply dynamic filters from sidebar
     filtered_df = apply_shared_filters(df)
 
-    # Manual input for SLI
-    st.sidebar.header("⚙️ Manual Inputs for SLI")
-    total_flow_rate = st.sidebar.number_input("Total Flow Rate (GPM)", value=800)
-    number_of_screens = st.sidebar.number_input("Number of Screens Installed", value=3)
-    screen_area_per_screen = st.sidebar.number_input("Screen Area per Screen (ft²)", value=2.0)
+    # Manual input fields for missing parameters
+    st.sidebar.header("⚙️ Manual Inputs")
+    total_flow_rate = st.sidebar.number_input("🔄 Total Flow Rate (GPM)", value=800)
+    number_of_screens = st.sidebar.number_input("🧃 Number of Screens Installed", value=3)
+    screen_area = st.sidebar.number_input("📐 Area per Screen (sq ft)", value=2.0)
 
-    # Safe division function
-    def safe_div(n, d):
-        return n / d if d else 0
+    # Utility: Safe division
+    def safe_div(x, y):
+        return x / y if y else 0
 
-    # Compute metrics from actual columns
-    STE = safe_div((filtered_df["Solids_Generated"] * filtered_df["Discard Ratio"]).sum(), filtered_df["Solids_Generated"].sum()) * 100 if "Solids_Generated" in filtered_df and "Discard Ratio" in filtered_df else 0
-    CVR = safe_div(filtered_df["Haul_OFF"].sum(), filtered_df["IntLength"].sum())
-    FRC = safe_div((filtered_df["Base_Oil"] + filtered_df["Water"]).sum(), filtered_df["Total_SCE"].sum()) * 100 if "Total_SCE" in filtered_df else 0
-    DII = safe_div(filtered_df["ROP"].mean(), filtered_df["Hole_Size"].mean() if "Hole_Size" in filtered_df else 1)
-    FLI = safe_div((filtered_df["Base_Oil"] + filtered_df["Water"] + filtered_df["Chemicals"]).sum(), filtered_df["IntLength"].sum())
-    CDR = safe_div(filtered_df["Chemicals"].sum(), filtered_df["IntLength"].sum())
-    MRE = 100 - FRC
-    DSL = 100 - STE
-    SLI = safe_div(total_flow_rate, number_of_screens * screen_area_per_screen)
+    # ✅ Calculating metrics from filtered dataset
+    def calculate_advanced_metrics(df):
+        solids_generated = df["Solids_Generated"].sum() if "Solids_Generated" in df.columns else 0
+        discard_ratio = df["Discard Ratio"].mean() if "Discard Ratio" in df.columns else 0
+        total_solids_removed = solids_generated * discard_ratio
+        total_solids_in = solids_generated
 
-    metrics = {
-        "STE": STE, "CVR": CVR, "SLI": SLI, "FRC%": FRC,
-        "DII": DII, "FLI": FLI, "CDR": CDR, "MRE%": MRE, "DSL": DSL
+        ste = safe_div(total_solids_removed, total_solids_in) * 100 if total_solids_in else 0
+        frc = safe_div(df["Total_SCE"].sum(), total_solids_removed) * 100 if total_solids_removed else 0
+        mre = 100 - frc
+        dsl = 100 - ste
+
+        return {
+            "STE": ste,
+            "CVR": safe_div(df["Haul_OFF"].sum(), df["IntLength"].sum()),
+            "SLI": safe_div(total_flow_rate, number_of_screens * screen_area),
+            "FRC%": frc,
+            "DII": safe_div(df["ROP"].mean(), df["Hole_Size"].mean()),
+            "FLI": safe_div(df[["Base_Oil", "Water", "Chemicals"]].sum().sum(), df["IntLength"].sum()),
+            "CDR": safe_div(df["Chemicals"].sum(), df["IntLength"].sum()),
+            "MRE%": mre,
+            "DSL": dsl
+        }
+
+    metrics = calculate_advanced_metrics(filtered_df)
+
+    # 📊 Display KPI Cards
+    st.subheader("📊 Key Efficiency Metrics")
+    kpi_cols = st.columns(3)
+    icon_map = {
+        "STE": "📈", "CVR": "🧱", "SLI": "📊", "FRC%": "💧", "DII": "⛏️",
+        "FLI": "🔄", "CDR": "🧪", "MRE%": "♻️", "DSL": "🚧"
     }
-
-    # KPI Board
-    st.subheader("📊 KPI Metrics")
-    icons = {"STE": "📈", "CVR": "🧱", "SLI": "📊", "FRC%": "💧", "DII": "⛏️", "FLI": "🔄", "CDR": "🧪", "MRE%": "♻️", "DSL": "🚧"}
-    units = {"FRC%": "%", "MRE%": "%", "DSL": "%"}
-    cols = st.columns(3)
-    for idx, (metric, value) in enumerate(metrics.items()):
-        with cols[idx % 3]:
+    for i, (key, val) in enumerate(metrics.items()):
+        with kpi_cols[i % 3]:
+            color = "green" if val >= 0 else "red"
             st.markdown(f"""
-                <div style="border:2px solid #ccc; border-radius:12px; box-shadow:2px 2px 8px rgba(0,0,0,0.1); padding:16px; background-color:#f9f9f9;">
-                    <h4>{icons.get(metric, '')} {metric}</h4>
-                    <span style="color:green; font-size:22px; font-weight:bold;">{value:.2f}{units.get(metric, '')}</span>
+                <div style="border:2px solid #ccc; border-radius:12px; padding:16px;
+                            background-color:#f9f9f9; box-shadow:1px 1px 6px rgba(0,0,0,0.1);">
+                    <h4>{icon_map.get(key, '')} {key}</h4>
+                    <p style="font-size:22px; color:{color}; font-weight:bold;">{val:.2f}</p>
                 </div>
             """, unsafe_allow_html=True)
 
-    # Normalization
+    # 📐 Unit-Normalized Metrics
     st.subheader("📐 Normalized Metrics")
     drilled_ft = filtered_df["IntLength"].sum()
     drilled_hr = filtered_df["Drilling_Hours"].sum()
-    norm_ft = {f"{k} per ft": safe_div(v, drilled_ft) for k, v in metrics.items()}
-    norm_hr = {f"{k} per hr": safe_div(v, drilled_hr) for k, v in metrics.items()}
-    norm_all = {**norm_ft, **norm_hr}
-    norm_cols = st.columns(3)
-    for idx, (label, val) in enumerate(norm_all.items()):
-        with norm_cols[idx % 3]:
-            st.metric(label, f"{val:.3f}")
 
-    # Chart Visualization
-    st.subheader("📊 Compare by Shaker & Well")
-    metric_to_plot = st.selectbox("Select Metric to Visualize", list(metrics.keys()))
-    if metric_to_plot in filtered_df.columns:
-        fig1 = px.box(filtered_df, x="flowline_Shakers", y=metric_to_plot, color="flowline_Shakers")
-        fig2 = px.box(filtered_df, x="Well_Name", y=metric_to_plot, color="Well_Name")
-        col1, col2 = st.columns(2)
-        col1.plotly_chart(fig1, use_container_width=True)
-        col2.plotly_chart(fig2, use_container_width=True)
+    norm_per_foot = {k: safe_div(v, drilled_ft) for k, v in metrics.items()}
+    norm_per_hr = {k: safe_div(v, drilled_hr) for k, v in metrics.items()}
 
-    # CSV Export
-    st.subheader("📤 Export Filtered Data")
-    st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
+    st.markdown("#### 🔹 Per Foot")
+    row1 = st.columns(3)
+    for i, (k, v) in enumerate(norm_per_foot.items()):
+        with row1[i % 3]:
+            st.metric(label=k + " / ft", value=f"{v:.3f}")
+
+    st.markdown("#### 🔹 Per Hour")
+    row2 = st.columns(3)
+    for i, (k, v) in enumerate(norm_per_hr.items()):
+        with row2[i % 3]:
+            st.metric(label=k + " / hr", value=f"{v:.3f}")
+
+    # 📊 Optional Comparison Plot
+    st.subheader("📈 Distribution by Shaker")
+    metric_choice = st.selectbox("Select Metric", list(metrics.keys()))
+    if metric_choice in filtered_df.columns:
+        fig = px.box(filtered_df, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers")
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Export Option
+    st.subheader("📤 Export Data")
+    st.download_button("Download Filtered Data", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
