@@ -309,82 +309,82 @@ def apply_shared_filters(df):
     return df
 
 # ---------------- ADVANCED ANALYSIS PAGE ----------------
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import numpy as np
+
+def calculate_advanced_metrics(df):
+    return {
+        "STE": df["STE"].mean() if "STE" in df.columns else 0,
+        "CVR": df["CVR"].mean() if "CVR" in df.columns else 0,
+        "SLI": df["SLI"].mean() if "SLI" in df.columns else 0,
+        "FRC%": df["FRC%"].mean() * 100 if "FRC%" in df.columns else 0,
+        "DII": df["DII"].mean() if "DII" in df.columns else 0,
+        "FLI": df["FLI"].mean() if "FLI" in df.columns else 0,
+        "CDR": df["CDR"].mean() if "CDR" in df.columns else 0,
+        "MRE%": df["MRE%"].mean() * 100 if "MRE%" in df.columns else 0,
+        "DSL": df["DSL"].mean() if "DSL" in df.columns else 0
+    }
+
+def render_kpi_board(metrics):
+    kpi_icons = {
+        "STE": "📈", "CVR": "🧱", "SLI": "📊", "FRC%": "💧", "DII": "⛏️",
+        "FLI": "🔄", "CDR": "🧪", "MRE%": "♻️", "DSL": "🚧"
+    }
+    units = {
+        "FRC%": "%", "MRE%": "%"
+    }
+
+    cols = st.columns(3)
+    for idx, (metric, value) in enumerate(metrics.items()):
+        color = "green" if value >= 0 else "red"
+        label = f"{kpi_icons.get(metric, '')} {metric}"
+        display_val = f"{value:.2f}{units.get(metric, '')}"
+        with cols[idx % 3]:
+            st.markdown(f"""
+                <div style="border: 2px solid #ccc; border-radius: 12px; box-shadow: 2px 2px 8px rgba(0,0,0,0.1); padding: 16px; background-color: #f9f9f9;">
+                    <h4 style="margin-bottom:8px;">{label}</h4>
+                    <span style="color:{color}; font-size: 22px; font-weight:bold;">{display_val}</span>
+                </div>
+            """, unsafe_allow_html=True)
+
+def render_advanced_charts(df):
+    st.subheader("📈 Advanced Metric Visuals")
+
+    metric_options = ["STE", "CVR", "SLI", "FRC%", "DII", "FLI", "CDR", "MRE%", "DSL"]
+    metric_choice = st.selectbox("Select Metric to Compare", metric_options)
+
+    if metric_choice in df.columns:
+        fig1 = px.box(df, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers", title=f"{metric_choice} by Shaker")
+        fig2 = px.box(df, x="Well_Name", y=metric_choice, color="Well_Name", title=f"{metric_choice} by Well")
+
+        col1, col2 = st.columns(2)
+        col1.plotly_chart(fig1, use_container_width=True)
+        col2.plotly_chart(fig2, use_container_width=True)
+
 def render_advanced_analysis(df):
     st.title("📌 Advanced Analysis Dashboard")
 
-    filtered_df = apply_shared_filters(df)
+    st.sidebar.header("🔍 Filter Data")
+    selected_shakers = st.sidebar.multiselect("Shakers", df["flowline_Shakers"].dropna().unique())
+    selected_wells = st.sidebar.multiselect("Well Names", df["Well_Name"].dropna().unique())
 
-    # Manual Inputs
-    st.sidebar.header("🛠️ Manual Input (If Data Missing)")
-    total_flow_rate = st.sidebar.number_input("Total Flow Rate (GPM)", value=800)
-    number_of_screens = st.sidebar.number_input("Number of Screens Installed", value=3)
-    screen_area = st.sidebar.number_input("Area per Screen (sq ft)", value=2.0)
-    unit = st.sidebar.radio("Normalize by", ["None", "Feet", "Hours", "Days"])
+    filtered_df = df.copy()
+    if selected_shakers:
+        filtered_df = filtered_df[filtered_df["flowline_Shakers"].isin(selected_shakers)]
+    if selected_wells:
+        filtered_df = filtered_df[filtered_df["Well_Name"].isin(selected_wells)]
 
-    # Safe division
-    def safe_div(n, d):
-        return n / d if d else 0
+    metrics = calculate_advanced_metrics(filtered_df)
+    render_kpi_board(metrics)
 
-    # Per-well metric calculations
-    metrics = []
-    for _, row in filtered_df.iterrows():
-        haul = row.get("Haul_OFF", 0)
-        intlen = row.get("IntLength", 0)
-        hole = row.get("Hole_Size", 1)
-        sce = row.get("Total_SCE", 0)
-        bo, water, chem = row.get("Base_Oil", 0), row.get("Water", 0), row.get("Chemicals", 0)
-        rop = row.get("ROP", 0)
-        hr = row.get("Drilling_Hours", 0)
+    render_advanced_charts(filtered_df)
 
-        metric_row = {
-            "Well_Name": row.get("Well_Name", ""),
-            "Operator": row.get("Operator", ""),
-            "Shaker Throughput Efficiency": safe_div(sce, sce) * 100,
-            "Cuttings Volume Ratio": safe_div(haul, intlen),
-            "Screen Loading Index": safe_div(total_flow_rate, number_of_screens * screen_area),
-            "Fluid Retention on Cuttings (%)": safe_div(sce, sce) * 100,
-            "Drilling Intensity Index": safe_div(rop, hole),
-            "Fluid Loading Index": safe_div(bo + water + chem, intlen),
-            "Chemical Demand Rate": safe_div(chem, intlen),
-            "Mud Retention Efficiency (%)": 100 - safe_div(sce, sce) * 100,
-            "Downstream Solids Loss": 100 - safe_div(sce, sce) * 100
-        }
-        metrics.append(metric_row)
-
-    metric_df = pd.DataFrame(metrics)
-
-    # Normalize
-    if unit == "Feet":
-        divisor = filtered_df["IntLength"].sum()
-    elif unit == "Hours":
-        divisor = filtered_df["Drilling_Hours"].sum()
-    elif unit == "Days":
-        divisor = safe_div(filtered_df["Drilling_Hours"].sum(), 24)
-    else:
-        divisor = None
-
-    if divisor:
-        for col in metric_df.columns[2:]:
-            metric_df[col] = metric_df[col].apply(lambda x: safe_div(x, divisor))
-
-    # KPI Summary
-    st.subheader("📋 KPI Summary")
-    kpi_cols = st.columns(3)
-    for i, col in enumerate(metric_df.columns[2:]):
-        with kpi_cols[i % 3]:
-            st.metric(col, f"{metric_df[col].mean():.2f}")
-
-    # Chart
-    st.subheader("📊 Compare Metrics")
-    selected_metric = st.selectbox("Select Metric", metric_df.columns[2:])
-    if selected_metric:
-        fig = px.bar(metric_df, x="Well_Name", y=selected_metric, color="Operator", title=f"{selected_metric} across Wells")
-        fig.update_layout(xaxis_tickangle=45)
-        st.plotly_chart(fig, use_container_width=True)
-
-    # Export
-    st.subheader("📤 Export Filtered Data")
-    st.download_button("Download CSV", metric_df.to_csv(index=False), "filtered_advanced_metrics.csv", "text/csv")
+    st.subheader("📤 Export Options")
+    if st.button("Download Filtered Data as CSV"):
+        st.download_button("Download", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
 
 # ---------------- MAIN NAVIGATION ----------------
 page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis", "Cost Estimator"])
