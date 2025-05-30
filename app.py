@@ -362,6 +362,7 @@ def render_advanced_analysis(df):
         fig1 = px.violin(filtered_df, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers",
                          box=True, points="all", title=f"{metric_choice} Distribution by Shaker")
         st.plotly_chart(fig1, use_container_width=True)
+
 # --- Visualizations Section ---
 st.subheader("📊 Metric Distribution by Shaker & Well")
 metric_choice = st.selectbox("Select Metric for Visualization", list(metrics.keys()))
@@ -382,8 +383,11 @@ if metric_choice in filtered_df.columns:
             color="Well_Name", title=f"{metric_choice} by Well"
         )
         col2.plotly_chart(fig2, use_container_width=True)
-    st.subheader("📤 Export Filtered Data")
-    st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
+
+        
+# --- Export ---
+st.subheader("📤 Export Filtered Data")
+st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
