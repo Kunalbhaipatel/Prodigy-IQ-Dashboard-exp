@@ -19,7 +19,7 @@ def load_styles():
     </style>""", unsafe_allow_html=True)
 
 # ------------------------- FILTERS -------------------------
-def full_filter_sidebar(df):
+    def apply_shared_filters(df):
     st.sidebar.header("Filters")
     search_term = st.sidebar.text_input("🔍 Search Anything").lower()
     filtered = df.copy()
@@ -61,7 +61,8 @@ def full_filter_sidebar(df):
 # ------------------------- PAGE 1: MULTI-WELL -------------------------
 def render_multi_well(df):
     st.title("🚀 Prodigy IQ Multi-Well Dashboard")
-    filtered_df = full_filter_sidebar(df)
+    filtered_df = apply_shared_filters(df)
+
 
     st.subheader("Summary Metrics")
     col1, col2, col3, col4, col5, col6 = st.columns(6)
@@ -304,7 +305,7 @@ st.set_page_config(
 load_styles()
 
 # Load dataset
-df = pd.read_csv("Refine Sample.csv")
+filtered_df = apply_shared_filters(df)
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
 # Sidebar Navigation
