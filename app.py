@@ -332,15 +332,24 @@ plot_df["Selected_Metric_Value"] = plot_df["Well_Name"].map(
     lambda w: metrics.get(metric_choice, 0)
 )
 
+plot_df = filtered_df[["Well_Name", "Operator"]].drop_duplicates().copy()
+plot_df["Metric Value"] = metrics.get(metric_choice, 0)
+plot_df = filtered_df[["Well_Name", "Operator"]].drop_duplicates().copy()
+plot_df["Metric Value"] = metrics.get(metric_choice, 0)
+
+plot_df = filtered_df[["Well_Name", "Operator"]].drop_duplicates().copy()
+plot_df["Metric Value"] = metrics.get(metric_choice, 0)
+
 fig = px.bar(
     plot_df,
     x="Well_Name",
-    y="Selected_Metric_Value",
+    y="Metric Value",
     color="Operator",
     title=f"{metric_choice} across Wells"
 )
-fig.update_layout(xaxis_title="Well", yaxis_title=metric_choice, xaxis_tickangle=45)
+fig.update_layout(xaxis_tickangle=45)
 st.plotly_chart(fig, use_container_width=True)
+
 
     # --- Normalized Section ---
     st.subheader("📐 Normalized Metrics")
