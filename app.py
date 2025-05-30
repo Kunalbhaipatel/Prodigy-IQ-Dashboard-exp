@@ -280,23 +280,20 @@ def render_cost_estimator(df):
         st.plotly_chart(fig_depth, use_container_width=True)
 
 # ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
+
 def render_advanced_analysis(df):
     st.title("📌 Advanced Analysis Dashboard")
 
-    # Apply dynamic filters from sidebar
+    with st.expander("🧪 Manual Input Parameters"):
+        total_flow_rate = st.number_input("🔄 Total Flow Rate (GPM)", value=800)
+        number_of_screens = st.number_input("🧃 Number of Screens Installed", value=3)
+        screen_area = st.number_input("📐 Area per Screen (sq ft)", value=2.0)
+
     filtered_df = apply_shared_filters(df)
 
-    # Manual input fields for missing parameters
-    st.sidebar.header("⚙️ Manual Inputs")
-    total_flow_rate = st.sidebar.number_input("🔄 Total Flow Rate (GPM)", value=800)
-    number_of_screens = st.sidebar.number_input("🧃 Number of Screens Installed", value=3)
-    screen_area = st.sidebar.number_input("📐 Area per Screen (sq ft)", value=2.0)
-
-    # Utility: Safe division
     def safe_div(x, y):
         return x / y if y else 0
 
-    # ✅ Calculating metrics from filtered dataset
     def calculate_advanced_metrics(df):
         solids_generated = df["Solids_Generated"].sum() if "Solids_Generated" in df.columns else 0
         discard_ratio = df["Discard Ratio"].mean() if "Discard Ratio" in df.columns else 0
@@ -322,7 +319,6 @@ def render_advanced_analysis(df):
 
     metrics = calculate_advanced_metrics(filtered_df)
 
-    # 📊 Display KPI Cards
     st.subheader("📊 Key Efficiency Metrics")
     kpi_cols = st.columns(3)
     icon_map = {
@@ -332,15 +328,14 @@ def render_advanced_analysis(df):
     for i, (key, val) in enumerate(metrics.items()):
         with kpi_cols[i % 3]:
             color = "green" if val >= 0 else "red"
-            st.markdown(f"""
+            st.markdown(f'''
                 <div style="border:2px solid #ccc; border-radius:12px; padding:16px;
                             background-color:#f9f9f9; box-shadow:1px 1px 6px rgba(0,0,0,0.1);">
                     <h4>{icon_map.get(key, '')} {key}</h4>
                     <p style="font-size:22px; color:{color}; font-weight:bold;">{val:.2f}</p>
                 </div>
-            """, unsafe_allow_html=True)
+            ''', unsafe_allow_html=True)
 
-    # 📐 Unit-Normalized Metrics
     st.subheader("📐 Normalized Metrics")
     drilled_ft = filtered_df["IntLength"].sum()
     drilled_hr = filtered_df["Drilling_Hours"].sum()
@@ -360,16 +355,16 @@ def render_advanced_analysis(df):
         with row2[i % 3]:
             st.metric(label=k + " / hr", value=f"{v:.3f}")
 
-    # 📊 Optional Comparison Plot
-    st.subheader("📈 Distribution by Shaker")
-    metric_choice = st.selectbox("Select Metric", list(metrics.keys()))
+    st.subheader("📈 Metric Distribution by Shaker")
+    metric_choice = st.selectbox("Select Metric to Plot", list(metrics.keys()))
     if metric_choice in filtered_df.columns:
-        fig = px.box(filtered_df, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers")
-        st.plotly_chart(fig, use_container_width=True)
+        import plotly.express as px
+        fig1 = px.violin(filtered_df, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers",
+                         box=True, points="all", title=f"{metric_choice} Distribution by Shaker")
+        st.plotly_chart(fig1, use_container_width=True)
 
-    # Export Option
-    st.subheader("📤 Export Data")
-    st.download_button("Download Filtered Data", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
+    st.subheader("📤 Export Filtered Data")
+    st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
