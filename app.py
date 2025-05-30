@@ -1,5 +1,4 @@
 
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -21,25 +20,21 @@ def load_styles():
 # ------------------------- PAGE 1 -------------------------
 def render_multi_well(df):
     st.title("🚀 Prodigy IQ Multi-Well Dashboard")
-    st.write("This is the Multi-Well Comparison page.")
     st.dataframe(df.head())
 
 # ------------------------- PAGE 2 -------------------------
 def render_sales_analysis(df):
     st.title("📈 Prodigy IQ Sales Intelligence")
-    st.write("This is the Sales Analysis page.")
     st.dataframe(df.head())
 
 # ------------------------- PAGE 3 -------------------------
 def render_advanced_analysis(df):
     st.title("🧪 Advanced Analysis Dashboard")
-    st.write("This is the Advanced Analysis page.")
     st.dataframe(df.head())
 
 # ------------------------- PAGE 4 -------------------------
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
-    st.write("This is the Cost Estimator page.")
     st.dataframe(df.head())
 
 # ------------------------- RUN APP -------------------------
