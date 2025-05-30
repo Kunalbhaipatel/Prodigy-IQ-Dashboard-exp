@@ -326,15 +326,21 @@ def render_advanced_analysis(df):
     metric_choice = st.selectbox("Select Metric", list(metrics.keys()))
 
     if metric_choice:
-        fig = px.bar(
-            filtered_df,
-            x="Well_Name",
-            y=metric_choice,
-            color="Operator",
-            title=f"{metric_choice} across Wells",
-        )
-        fig.update_layout(xaxis_title="Well", yaxis_title=metric_choice, xaxis_tickangle=45)
-        st.plotly_chart(fig, use_container_width=True)
+        # ✅ Fixed block
+plot_df = filtered_df.copy()
+plot_df["Selected_Metric_Value"] = plot_df["Well_Name"].map(
+    lambda w: metrics.get(metric_choice, 0)
+)
+
+fig = px.bar(
+    plot_df,
+    x="Well_Name",
+    y="Selected_Metric_Value",
+    color="Operator",
+    title=f"{metric_choice} across Wells"
+)
+fig.update_layout(xaxis_title="Well", yaxis_title=metric_choice, xaxis_tickangle=45)
+st.plotly_chart(fig, use_container_width=True)
 
     # --- Normalized Section ---
     st.subheader("📐 Normalized Metrics")
