@@ -282,36 +282,47 @@ def render_cost_estimator(df):
 # ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
 def render_advanced_analysis(df):
     st.title("📌 Advanced Analysis Dashboard")
-
-    # Apply shared filters
     filtered_df = apply_shared_filters(df)
 
-    # --- Manual Inputs ---
-    st.sidebar.header("⚙️ Manual Inputs for Missing Parameters")
+    # --- Manual Input for Missing Data ---
+    st.sidebar.header("⚙️ Manual Input (If Data Missing)")
     total_flow_rate = st.sidebar.number_input("Enter Total Flow Rate (GPM)", value=800)
-    number_of_screens = st.sidebar.number_input("Enter Number of Screens Installed", value=3)
-    screen_area_per_screen = st.sidebar.number_input("Area per Screen (sq ft)", value=2.0)
+    number_of_screens = st.sidebar.number_input("Number of Screens Used", value=3)
+    screen_area_per_screen = st.sidebar.number_input("Screen Area (sq ft)", value=2.0)
 
-    # --- Metric Calculations ---
+    # --- Safe Division ---
     def safe_div(numerator, denominator):
         return numerator / denominator if denominator else 0
 
+    # --- Metric Calculation Logic ---
     def calculate_advanced_metrics(df):
+        sce = df["Total_SCE"].sum() if "Total_SCE" in df.columns else 0
+        intlen = df["IntLength"].sum()
+        haul = df["Haul_OFF"].sum()
+        flow_total = total_flow_rate
+        screen_total_area = number_of_screens * screen_area_per_screen
+        base_oil = df["Base_Oil"].sum()
+        water = df["Water"].sum()
+        chemicals = df["Chemicals"].sum()
+        drilling_hours = df["Drilling_Hours"].sum() if "Drilling_Hours" in df.columns else 1
+        hole_size = df["Hole_Size"].mean() if "Hole_Size" in df.columns else 8.5
+        rop = df["ROP"].mean()
+
         return {
-            "STE": safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100 if "Total_SCE" in df.columns else 0,  # Simplified fallback
-            "CVR": safe_div(df["Haul_OFF"].sum(), df["IntLength"].sum()),
-            "SLI": safe_div(total_flow_rate, number_of_screens * screen_area_per_screen),
-            "FRC%": safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100 if "Total_SCE" in df.columns else 0,
-            "DII": safe_div(df["ROP"].mean(), df["Hole_Size"].mean() if "Hole_Size" in df.columns else 1),
-            "FLI": safe_div(df[["Base_Oil", "Water", "Chemicals"]].sum().sum(), df["IntLength"].sum()),
-            "CDR": safe_div(df["Chemicals"].sum(), df["IntLength"].sum()),
-            "MRE%": 100 - safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100,
-            "DSL": 100 - (safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100)
+            "STE": safe_div(sce, sce) * 100,  # fallback as 100%
+            "CVR": safe_div(haul, intlen),
+            "SLI": safe_div(flow_total, screen_total_area),
+            "FRC%": safe_div(sce, sce) * 100,
+            "DII": safe_div(rop, hole_size),
+            "FLI": safe_div(base_oil + water + chemicals, intlen),
+            "CDR": safe_div(chemicals, intlen),
+            "MRE%": 100 - safe_div(sce, sce) * 100,
+            "DSL": 100 - (safe_div(sce, sce) * 100)
         }
 
     metrics = calculate_advanced_metrics(filtered_df)
 
-    # --- KPI Display ---
+    # --- KPI Cards ---
     def render_kpi_board(metrics):
         icons = {
             "STE": "📈", "CVR": "🧱", "SLI": "📊", "FRC%": "💧", "DII": "⛏️",
@@ -319,23 +330,24 @@ def render_advanced_analysis(df):
         }
         units = {"FRC%": "%", "MRE%": "%", "DSL": "%"}
         cols = st.columns(3)
-        for idx, (metric, value) in enumerate(metrics.items()):
+        for idx, (metric, val) in enumerate(metrics.items()):
             with cols[idx % 3]:
                 unit = units.get(metric, "")
-                color = "green" if value >= 0 else "red"
+                color = "green" if val >= 0 else "red"
                 st.markdown(f"""
                     <div style="border:2px solid #ccc; border-radius:12px; box-shadow:2px 2px 8px rgba(0,0,0,0.1); padding:16px; background-color:#f9f9f9;">
                         <h4>{icons.get(metric, '')} {metric}</h4>
-                        <span style="color:{color}; font-size:22px; font-weight:bold;">{value:.2f}{unit}</span>
+                        <span style="color:{color}; font-size:22px; font-weight:bold;">{val:.2f}{unit}</span>
                     </div>
                 """, unsafe_allow_html=True)
 
     render_kpi_board(metrics)
 
-    # --- Normalized Display ---
+    # --- Normalized Outputs ---
     st.subheader("📐 Normalized Metrics")
     drilled_ft = filtered_df["IntLength"].sum()
-    drilled_hr = filtered_df["Drilling_Hours"].sum()
+    drilled_hr = filtered_df["Drilling_Hours"].sum() if "Drilling_Hours" in filtered_df.columns else 1
+
     normalized_data = {
         "Per Foot": {k: safe_div(v, drilled_ft) for k, v in metrics.items()},
         "Per Hour": {k: safe_div(v, drilled_hr) for k, v in metrics.items()}
@@ -343,9 +355,9 @@ def render_advanced_analysis(df):
 
     for label, data in normalized_data.items():
         st.markdown(f"#### {label}")
-        colx = st.columns(3)
+        cols = st.columns(3)
         for idx, (metric, val) in enumerate(data.items()):
-            with colx[idx % 3]:
+            with cols[idx % 3]:
                 st.metric(label=f"{metric} ({label})", value=f"{val:.3f}")
 
     # --- Visuals ---
