@@ -3,7 +3,6 @@ import streamlit as st
 import pandas as pd
 
 from sales_analysis import render_sales_analysis
-from multi_well_comparison import render_multi_well
 from advanced_analysis import render_advanced_analysis
 from styles import load_styles  # If style is split, else remove this line and keep inline
 
