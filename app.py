@@ -1,44 +1,61 @@
+
 import streamlit as st
 import pandas as pd
-from multi_well_comparison import render_multi_well_page
-from sales_analysis import render_sales_analysis
-from advanced_analysis import render_advanced_analysis
+import plotly.express as px
+from datetime import datetime
 
 # ------------------------- STYLING -------------------------
 def load_styles():
-    st.markdown("""
-        <style>
-        div[data-testid="metric-container"] {
-            background-color: #fff;
-            padding: 1.2em;
-            border-radius: 15px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-            margin: 0.5em;
-            text-align: center;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    st.markdown("""<style>
+    div[data-testid="metric-container"] {
+        background-color: #fff;
+        padding: 1.2em;
+        border-radius: 15px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+        margin: 0.5em;
+        text-align: center;
+    }
+    </style>""", unsafe_allow_html=True)
 
-# ------------------------- MAIN APP -------------------------
-st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
-load_styles()
+# ------------------------- FILTERS -------------------------
+def full_filter_sidebar(df):
+    st.sidebar.header("Filters")
+    search_term = st.sidebar.text_input("🔍 Search Anything").lower()
+    filtered = df.copy()
 
-df = pd.read_csv("Refine Sample.csv")
-df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
+    if search_term:
+        filtered = filtered[filtered.apply(lambda row: row.astype(str).str.lower().str.contains(search_term).any(), axis=1)]
 
-# Sidebar Navigation
-page = st.sidebar.radio("📂 Navigate", [
-    "Multi-Well Comparison",
-    "Sales Analysis",
-    "Advanced Analysis"
-])
+    for col in ["Operator", "Contractor", "flowline_Shakers", "Hole_Size"]:
+        options = sorted(filtered[col].dropna().astype(str).unique().tolist())
+        selected = st.sidebar.selectbox(col, ["All"] + options, key=col)
+        if selected != "All":
+            filtered = filtered[filtered[col].astype(str) == selected]
 
-if page == "Multi-Well Comparison":
-    render_multi_well_page()
-elif page == "Sales Analysis":
-    render_sales_analysis()
-elif page == "Advanced Analysis":
-    render_advanced_analysis(df)
+    filtered["TD_Date"] = pd.to_datetime(filtered["TD_Date"], errors="coerce")
+    year_range = st.sidebar.slider("TD Date Range", 2020, 2026, (2020, 2026))
+    filtered = filtered[(filtered["TD_Date"].dt.year >= year_range[0]) & (filtered["TD_Date"].dt.year <= year_range[1])]
+
+    depth_bins = {
+        "<5000 ft": (0, 5000), "5000–10000 ft": (5000, 10000),
+        "10000–15000 ft": (10000, 15000), "15000–20000 ft": (15000, 20000),
+        "20000–25000 ft": (20000, 25000), ">25000 ft": (25000, float("inf"))
+    }
+    selected_depth = st.sidebar.selectbox("Depth", ["All"] + list(depth_bins.keys()))
+    if selected_depth != "All":
+        low, high = depth_bins[selected_depth]
+        filtered = filtered[(filtered["MD Depth"] >= low) & (filtered["MD Depth"] < high)]
+
+    mw_bins = {
+        "<3": (0, 3), "3–6": (3, 6), "6–9": (6, 9),
+        "9–11": (9, 11), "11–14": (11, 14), "14–30": (14, 30)
+    }
+    selected_mw = st.sidebar.selectbox("Average Mud Weight", ["All"] + list(mw_bins.keys()))
+    if selected_mw != "All":
+        low, high = mw_bins[selected_mw]
+        filtered = filtered[(filtered["AMW"] >= low) & (filtered["AMW"] < high)]
+
+    return filtered
 
 # ------------------------- PAGE 1: MULTI-WELL -------------------------
 def render_multi_well(df):
@@ -274,23 +291,6 @@ def render_cost_estimator(df):
         fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
                            color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
         st.plotly_chart(fig_depth, use_container_width=True)
-
-# ------------------------- PAGE 4: Advanced Analysis -------------------------
-
-from sales_analysis import render_sales_analysis
-from multi_well_comparison import render_multi_well
-from advanced_analysis import render_advanced_analysis
-
-page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis", "Cost Estimator"])
-
-if page == "Multi-Well Comparison":
-    render_multi_well(df)
-elif page == "Sales Analysis":
-    render_sales_analysis(df)
-elif page == "Advanced Analysis":
-    render_advanced_analysis(df)
-else:
-    render_cost_estimator(df)
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
