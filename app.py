@@ -59,7 +59,6 @@ def apply_shared_filters(df):
     return filtered
 
 # ------------------------- IMPORT PAGE MODULES -------------------------
-from multi_well_comparison import render_multi_well
 from sales_analysis import render_sales_analysis
 from advanced_analysis import render_advanced_analysis
 from cost_estimator import render_cost_estimator
