@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 
+from multi_well_comparison import render_multi_well
 from sales_analysis import render_sales_analysis
 from advanced_analysis import render_advanced_analysis
 
