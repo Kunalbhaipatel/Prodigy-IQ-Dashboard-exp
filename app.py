@@ -4,7 +4,19 @@ import pandas as pd
 
 from sales_analysis import render_sales_analysis
 from advanced_analysis import render_advanced_analysis
-from styles import load_styles  # If style is split, else remove this line and keep inline
+
+def load_styles():
+    st.markdown("""<style>
+    div[data-testid="metric-container"] {
+        background-color: #fff;
+        padding: 1.2em;
+        border-radius: 15px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+        margin: 0.5em;
+        text-align: center;
+    }
+    </style>""", unsafe_allow_html=True)
+
 
 # ------------------------- CONFIG & STYLING -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
