@@ -94,7 +94,7 @@ def render_multi_well(df):
 # ------------------------- PAGE 2: SALES -------------------------
 def render_sales_analysis(df):
     st.title("📈 Prodigy IQ Sales Intelligence")
-    filtered_df = full_filter_sidebar(df)
+    filtered_df = apply_shared_filters(df)
 
     st.subheader("🧭 Wells Over Time (Monthly Volume)")
     month_df = filtered_df.copy()
