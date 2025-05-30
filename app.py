@@ -280,67 +280,85 @@ def render_cost_estimator(df):
         st.plotly_chart(fig_depth, use_container_width=True)
 
 # ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
-# ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
-
-def calculate_advanced_metrics(df):
-    metrics = {}
-    metric_list = ["STE", "CVR", "SLI", "FRC%", "DII", "FLI", "CDR", "MRE%", "DSL"]
-
-    st.sidebar.subheader("Manual Input (If Data Missing)")
-
-    for metric in metric_list:
-        if metric in df.columns and df[metric].notna().sum() > 0:
-            val = df[metric].mean()
-            if metric in ["FRC%", "MRE%"]:
-                val *= 100  # convert to percentage if it's a ratio
-            metrics[metric] = val
-        else:
-            default = 0.0
-            input_val = st.sidebar.number_input(f"Enter value for {metric}", value=default, format="%.2f")
-            metrics[metric] = input_val
-
-    return metrics
-
-def render_kpi_board(metrics):
-    kpi_icons = {
-        "STE": "📈", "CVR": "🧱", "SLI": "📊", "FRC%": "💧", "DII": "⛏️",
-        "FLI": "🔄", "CDR": "🧪", "MRE%": "♻️", "DSL": "🚧"
-    }
-    units = {"FRC%": "%", "MRE%": "%"}
-
-    cols = st.columns(3)
-    for idx, (metric, value) in enumerate(metrics.items()):
-        label = f"{kpi_icons.get(metric, '')} {metric}"
-        display_val = f"{value:.2f}{units.get(metric, '')}"
-        with cols[idx % 3]:
-            st.markdown(f"""
-                <div style="border: 2px solid #ccc; border-radius: 12px; box-shadow: 2px 2px 8px rgba(0,0,0,0.1); padding: 16px; background-color: #f9f9f9;">
-                    <h4 style="margin-bottom:8px;">{label}</h4>
-                    <span style="color:green; font-size: 22px; font-weight:bold;">{display_val}</span>
-                </div>
-            """, unsafe_allow_html=True)
-
 def render_advanced_analysis(df):
     st.title("📌 Advanced Analysis Dashboard")
 
     # Apply shared filters
     filtered_df = apply_shared_filters(df)
 
-    # Calculate and display metrics
+    # --- Manual Inputs ---
+    st.sidebar.header("⚙️ Manual Inputs for Missing Parameters")
+    total_flow_rate = st.sidebar.number_input("Enter Total Flow Rate (GPM)", value=800)
+    number_of_screens = st.sidebar.number_input("Enter Number of Screens Installed", value=3)
+    screen_area_per_screen = st.sidebar.number_input("Area per Screen (sq ft)", value=2.0)
+
+    # --- Metric Calculations ---
+    def safe_div(numerator, denominator):
+        return numerator / denominator if denominator else 0
+
+    def calculate_advanced_metrics(df):
+        return {
+            "STE": safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100 if "Total_SCE" in df.columns else 0,  # Simplified fallback
+            "CVR": safe_div(df["Haul_OFF"].sum(), df["IntLength"].sum()),
+            "SLI": safe_div(total_flow_rate, number_of_screens * screen_area_per_screen),
+            "FRC%": safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100 if "Total_SCE" in df.columns else 0,
+            "DII": safe_div(df["ROP"].mean(), df["Hole_Size"].mean() if "Hole_Size" in df.columns else 1),
+            "FLI": safe_div(df[["Base_Oil", "Water", "Chemicals"]].sum().sum(), df["IntLength"].sum()),
+            "CDR": safe_div(df["Chemicals"].sum(), df["IntLength"].sum()),
+            "MRE%": 100 - safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100,
+            "DSL": 100 - (safe_div(df["Total_SCE"].sum(), df["Total_SCE"].sum()) * 100)
+        }
+
     metrics = calculate_advanced_metrics(filtered_df)
+
+    # --- KPI Display ---
+    def render_kpi_board(metrics):
+        icons = {
+            "STE": "📈", "CVR": "🧱", "SLI": "📊", "FRC%": "💧", "DII": "⛏️",
+            "FLI": "🔄", "CDR": "🧪", "MRE%": "♻️", "DSL": "🚧"
+        }
+        units = {"FRC%": "%", "MRE%": "%", "DSL": "%"}
+        cols = st.columns(3)
+        for idx, (metric, value) in enumerate(metrics.items()):
+            with cols[idx % 3]:
+                unit = units.get(metric, "")
+                color = "green" if value >= 0 else "red"
+                st.markdown(f"""
+                    <div style="border:2px solid #ccc; border-radius:12px; box-shadow:2px 2px 8px rgba(0,0,0,0.1); padding:16px; background-color:#f9f9f9;">
+                        <h4>{icons.get(metric, '')} {metric}</h4>
+                        <span style="color:{color}; font-size:22px; font-weight:bold;">{value:.2f}{unit}</span>
+                    </div>
+                """, unsafe_allow_html=True)
+
     render_kpi_board(metrics)
 
-    # Metric Distribution Chart
-    st.subheader("📈 Metric Distribution by Shaker")
-    metric_options = list(metrics.keys())
-    metric_choice = st.selectbox("Select Metric", metric_options)
+    # --- Normalized Display ---
+    st.subheader("📐 Normalized Metrics")
+    drilled_ft = filtered_df["IntLength"].sum()
+    drilled_hr = filtered_df["Drilling_Hours"].sum()
+    normalized_data = {
+        "Per Foot": {k: safe_div(v, drilled_ft) for k, v in metrics.items()},
+        "Per Hour": {k: safe_div(v, drilled_hr) for k, v in metrics.items()}
+    }
 
+    for label, data in normalized_data.items():
+        st.markdown(f"#### {label}")
+        colx = st.columns(3)
+        for idx, (metric, val) in enumerate(data.items()):
+            with colx[idx % 3]:
+                st.metric(label=f"{metric} ({label})", value=f"{val:.3f}")
+
+    # --- Visuals ---
+    st.subheader("📊 Metric Distribution by Shaker")
+    metric_choice = st.selectbox("Select Metric", list(metrics.keys()))
     if metric_choice in filtered_df.columns:
-        fig = px.box(filtered_df, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers",
-                     title=f"{metric_choice} by Shaker Type")
-        st.plotly_chart(fig, use_container_width=True)
+        fig1 = px.box(filtered_df, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers", title=f"{metric_choice} by Shaker")
+        fig2 = px.box(filtered_df, x="Well_Name", y=metric_choice, color="Well_Name", title=f"{metric_choice} by Well")
+        col1, col2 = st.columns(2)
+        col1.plotly_chart(fig1, use_container_width=True)
+        col2.plotly_chart(fig2, use_container_width=True)
 
-    # Data Export
+    # --- Export ---
     st.subheader("📤 Export Filtered Data")
     st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
 
