@@ -1,46 +1,44 @@
 import streamlit as st
 import pandas as pd
-
+from multi_well_comparison import render_multi_well_page
 from sales_analysis import render_sales_analysis
-from multi_well_comparison import render_multi_well
 from advanced_analysis import render_advanced_analysis
-from cost_estimator import render_cost_estimator
 
 # ------------------------- STYLING -------------------------
 def load_styles():
-    st.markdown("""<style>
-    div[data-testid="metric-container"] {
-        background-color: #fff;
-        padding: 1.2em;
-        border-radius: 15px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-        margin: 0.5em;
-        text-align: center;
-    }
-    </style>""", unsafe_allow_html=True)
+    st.markdown("""
+        <style>
+        div[data-testid="metric-container"] {
+            background-color: #fff;
+            padding: 1.2em;
+            border-radius: 15px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+            margin: 0.5em;
+            text-align: center;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-# ------------------------- RUN APP -------------------------
+# ------------------------- MAIN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
 load_styles()
 
 df = pd.read_csv("Refine Sample.csv")
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
+# Sidebar Navigation
 page = st.sidebar.radio("📂 Navigate", [
     "Multi-Well Comparison",
     "Sales Analysis",
-    "Advanced Analysis",
-    "Cost Estimator"
+    "Advanced Analysis"
 ])
 
 if page == "Multi-Well Comparison":
-    render_multi_well(df)
+    render_multi_well_page()
 elif page == "Sales Analysis":
-    render_sales_analysis(df)
+    render_sales_analysis()
 elif page == "Advanced Analysis":
     render_advanced_analysis(df)
-else:
-    render_cost_estimator(df)
 
 # ------------------------- PAGE 1: MULTI-WELL -------------------------
 def render_multi_well(df):
