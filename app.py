@@ -290,26 +290,6 @@ def render_advanced_analysis(df):
         screen_area = st.number_input("📐 Area per Screen (sq ft)", value=2.0)
 
     filtered_df = apply_shared_filters(df)
-# --- Visualizations Section ---
-st.subheader("📊 Metric Distribution by Shaker & Well")
-metric_choice = st.selectbox("Select Metric for Visualization", list(metrics.keys()))
-
-if metric_choice in filtered_df.columns:
-    with st.expander("📊 View Detailed Visualizations"):
-        col1, col2 = st.columns(2)
-
-        fig1 = px.violin(
-            filtered_df, x="flowline_Shakers", y=metric_choice,
-            box=True, points="all", color="flowline_Shakers",
-            title=f"{metric_choice} by Shaker Type"
-        )
-        col1.plotly_chart(fig1, use_container_width=True)
-
-        fig2 = px.box(
-            filtered_df, x="Well_Name", y=metric_choice,
-            color="Well_Name", title=f"{metric_choice} by Well"
-        )
-        col2.plotly_chart(fig2, use_container_width=True)
 
     def safe_div(x, y):
         return x / y if y else 0
@@ -382,7 +362,26 @@ if metric_choice in filtered_df.columns:
         fig1 = px.violin(filtered_df, x="flowline_Shakers", y=metric_choice, color="flowline_Shakers",
                          box=True, points="all", title=f"{metric_choice} Distribution by Shaker")
         st.plotly_chart(fig1, use_container_width=True)
+# --- Visualizations Section ---
+st.subheader("📊 Metric Distribution by Shaker & Well")
+metric_choice = st.selectbox("Select Metric for Visualization", list(metrics.keys()))
 
+if metric_choice in filtered_df.columns:
+    with st.expander("📊 View Detailed Visualizations"):
+        col1, col2 = st.columns(2)
+
+        fig1 = px.violin(
+            filtered_df, x="flowline_Shakers", y=metric_choice,
+            box=True, points="all", color="flowline_Shakers",
+            title=f"{metric_choice} by Shaker Type"
+        )
+        col1.plotly_chart(fig1, use_container_width=True)
+
+        fig2 = px.box(
+            filtered_df, x="Well_Name", y=metric_choice,
+            color="Well_Name", title=f"{metric_choice} by Well"
+        )
+        col2.plotly_chart(fig2, use_container_width=True)
     st.subheader("📤 Export Filtered Data")
     st.download_button("Download CSV", filtered_df.to_csv(index=False), "filtered_data.csv", "text/csv")
 
