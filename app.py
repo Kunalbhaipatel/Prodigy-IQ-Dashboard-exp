@@ -61,7 +61,6 @@ def apply_shared_filters(df):
 # ------------------------- IMPORT PAGE MODULES -------------------------
 from sales_analysis import render_sales_analysis
 from advanced_analysis import render_advanced_analysis
-from cost_estimator import render_cost_estimator
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
