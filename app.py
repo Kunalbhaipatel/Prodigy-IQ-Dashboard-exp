@@ -1,12 +1,15 @@
+
 import streamlit as st
 import pandas as pd
 
 from sales_analysis import render_sales_analysis
 from multi_well_comparison import render_multi_well
 from advanced_analysis import render_advanced_analysis
-from app import render_cost_estimator  # Modify if the estimator function is elsewhere
+from styles import load_styles  # If style is split, else remove this line and keep inline
 
-# ------------------------- STYLING -------------------------
+# ------------------------- CONFIG & STYLING -------------------------
+st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
+
 def load_styles():
     st.markdown("""<style>
     div[data-testid="metric-container"] {
@@ -19,13 +22,13 @@ def load_styles():
     }
     </style>""", unsafe_allow_html=True)
 
-# ------------------------- RUN APP -------------------------
-st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
 load_styles()
 
+# ------------------------- LOAD DATA -------------------------
 df = pd.read_csv("Refine Sample.csv")
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
+# ------------------------- NAVIGATION -------------------------
 page = st.sidebar.radio("📂 Navigate", [
     "Multi-Well Comparison",
     "Sales Analysis",
@@ -33,6 +36,7 @@ page = st.sidebar.radio("📂 Navigate", [
     "Cost Estimator"
 ])
 
+# ------------------------- ROUTING -------------------------
 if page == "Multi-Well Comparison":
     render_multi_well(df)
 elif page == "Sales Analysis":
@@ -40,6 +44,8 @@ elif page == "Sales Analysis":
 elif page == "Advanced Analysis":
     render_advanced_analysis(df)
 else:
+    # Import from within the same file if function defined here, or modularize if needed
+    from app import render_cost_estimator
     render_cost_estimator(df)
 
 # ------------------------- PAGE 1: MULTI-WELL -------------------------
