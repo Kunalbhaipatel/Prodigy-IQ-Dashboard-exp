@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime
+def apply_shared_filters(df):
 
 # ------------------------- STYLING -------------------------
 def load_styles():
@@ -283,14 +284,7 @@ def render_advanced_analysis(df):
     st.title("📌 Advanced Analysis Dashboard")
 
     st.sidebar.header("🔍 Filter Data")
-    selected_shakers = st.sidebar.multiselect("Shakers", df["flowline_Shakers"].dropna().unique())
-    selected_wells = st.sidebar.multiselect("Well Names", df["Well_Name"].dropna().unique())
-
-    filtered_df = df.copy()
-    if selected_shakers:
-        filtered_df = filtered_df[filtered_df["flowline_Shakers"].isin(selected_shakers)]
-    if selected_wells:
-        filtered_df = filtered_df[filtered_df["Well_Name"].isin(selected_wells)]
+    filtered_df = apply_shared_filters(df)
 
     metrics = calculate_advanced_metrics(filtered_df)
     render_kpi_board(metrics)
