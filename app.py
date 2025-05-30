@@ -1,8 +1,9 @@
-
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-from datetime import datetime
+
+from sales_analysis import render_sales_analysis
+from multi_well_comparison import render_multi_well
+from advanced_analysis import render_advanced_analysis
 
 # ------------------------- STYLING -------------------------
 def load_styles():
@@ -291,6 +292,23 @@ def render_cost_estimator(df):
         fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
                            color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
         st.plotly_chart(fig_depth, use_container_width=True)
+
+# ------------------------- PAGE 4: Advanced Analysis -------------------------
+
+from sales_analysis import render_sales_analysis
+from multi_well_comparison import render_multi_well
+from advanced_analysis import render_advanced_analysis
+
+page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis", "Cost Estimator"])
+
+if page == "Multi-Well Comparison":
+    render_multi_well(df)
+elif page == "Sales Analysis":
+    render_sales_analysis(df)
+elif page == "Advanced Analysis":
+    render_advanced_analysis(df)
+else:
+    render_cost_estimator(df)
 
 # ------------------------- RUN APP -------------------------
 st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
