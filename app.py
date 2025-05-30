@@ -379,10 +379,12 @@ load_styles()
 df = pd.read_csv("Refine Sample.csv")
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
-page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Cost Estimator"])
+page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis","Advanced Analysis", "Cost Estimator"])
 if page == "Multi-Well Comparison":
-    render_multi_well(df)
+    render_multi_well_page()
 elif page == "Sales Analysis":
-    render_sales_analysis(df)
+    render_sales_analysis()
+elif page == "Advanced Analysis":
+    render_advanced_analysis(df)  # ✅ This function must be defined and imported
 else:
     render_cost_estimator(df)
