@@ -20,7 +20,7 @@ def load_styles():
 
 # ------------------------- FILTERS -------------------------
     def apply_shared_filters(df):
-    st.sidebar.header("Filters")
+    filtered_df = apply_shared_filters(df)
     search_term = st.sidebar.text_input("🔍 Search Anything").lower()
     filtered = df.copy()
 
@@ -282,7 +282,6 @@ def render_advanced_charts(df):
 def render_advanced_analysis(df):
     st.title("📌 Advanced Analysis Dashboard")
 
-    st.sidebar.header("🔍 Filter Data")
     filtered_df = apply_shared_filters(df)
 
     metrics = calculate_advanced_metrics(filtered_df)
@@ -305,6 +304,7 @@ st.set_page_config(
 load_styles()
 
 # Load dataset
+df = pd.read_csv("Refine Sample.csv")
 filtered_df = apply_shared_filters(df)
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
