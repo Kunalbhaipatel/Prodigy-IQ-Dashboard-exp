@@ -47,6 +47,12 @@ def load_styles():
         background-color: #6c757d;
         color: white;
     }
+    .global-box {
+        background-color: #f0f2f6;
+        padding: 1em;
+        border-radius: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
     </style>""", unsafe_allow_html=True)
 
 # ------------------------- FILTER PANEL WITH TOGGLE -------------------------
@@ -56,9 +62,16 @@ def render_filter_panel(df):
 
         if filter_mode == "Global":
             with st.expander("🌐 Global Filters", expanded=True):
-                well_filter = st.multiselect("Select Well(s)", sorted(df["Well_Name"].dropna().unique()), key="f1")
-                if well_filter:
-                    df = df[df["Well_Name"].isin(well_filter)]
+                with st.container():
+                    st.markdown("<div class='global-box'>", unsafe_allow_html=True)
+                    search_term = st.text_input("🔍 Search Anything").lower()
+                    if search_term:
+                        df = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(search_term).any(), axis=1)]
+
+                    well_filter = st.multiselect("Select Well(s)", sorted(df["Well_Name"].dropna().unique()), key="f1")
+                    if well_filter:
+                        df = df[df["Well_Name"].isin(well_filter)]
+                    st.markdown("</div>", unsafe_allow_html=True)
 
         elif filter_mode == "Common":
             with st.expander("🔁 Common Filters", expanded=True):
@@ -79,6 +92,27 @@ def render_filter_panel(df):
                 year_range = st.slider("TD Date Range", 2020, 2026, (2020, 2026))
                 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
                 df = df[df["TD_Date"].dt.year.between(year_range[0], year_range[1])]
+
+                if "AMW" in df.columns:
+                    mw_bins = {
+                        "<3": (0, 3), "3–6": (3, 6), "6–9": (6, 9),
+                        "9–11": (9, 11), "11–14": (11, 14), "14+": (14, float("inf"))
+                    }
+                    selected_mw = st.selectbox("Average Mud Weight", ["All"] + list(mw_bins.keys()))
+                    if selected_mw != "All":
+                        low, high = mw_bins[selected_mw]
+                        df = df[(df["AMW"] >= low) & (df["AMW"] < high)]
+
+                if "MD Depth" in df.columns:
+                    depth_bins = {
+                        "<5000 ft": (0, 5000), "5000–10000 ft": (5000, 10000),
+                        "10000–15000 ft": (10000, 15000), "15000–20000 ft": (15000, 20000),
+                        "20000–25000 ft": (20000, 25000), ">25000 ft": (25000, float("inf"))
+                    }
+                    selected_depth = st.selectbox("Depth", ["All"] + list(depth_bins.keys()))
+                    if selected_depth != "All":
+                        low, high = depth_bins[selected_depth]
+                        df = df[(df["MD Depth"] >= low) & (df["MD Depth"] < high)]
 
     return df
 # ------------------------- PAGE: MULTI-WELL COMPARISON -------------------------
