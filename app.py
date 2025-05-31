@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from Executive_Summary import render_executive_summary
 
 from enhanced_dashboard_charts import (
     radar_chart_multi_kpi,
@@ -13,7 +14,7 @@ from enhanced_dashboard_charts import (
     stacked_cost_chart,
     render_executive_summary
 )
-from Executive_Summary import render_executive_summary
+
 from advanced_analysis import render_advanced_analysis
 from cost_estimator import render_cost_estimator
 
