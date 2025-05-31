@@ -193,9 +193,6 @@ import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime
 
-# ✅ Set page config ONCE at the top
-st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
-
 # ------------------------- STYLING -------------------------
 def load_styles():
     st.markdown("""<style>
