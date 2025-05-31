@@ -11,8 +11,7 @@ from enhanced_dashboard_charts import (
     fluid_pie_chart_by_operator,
     kpi_heatmap,
     kpi_boxplot,
-    stacked_cost_chart,
-    render_executive_summary
+    stacked_cost_chart
 )
 
 from advanced_analysis import render_advanced_analysis
