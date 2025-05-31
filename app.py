@@ -118,7 +118,7 @@ def render_filter_panel(df):
 # ------------------------- PAGE: MULTI-WELL COMPARISON -------------------------
 def render_multi_well(df):
     st.title("🚀 Prodigy IQ Multi-Well Dashboard")
-    filtered_df = apply_shared_filters(df)
+    filtered_df = render_filter_panel(df)
 
     st.subheader("Summary Metrics")
     col1, col2, col3, col4, col5, col6 = st.columns(6)
