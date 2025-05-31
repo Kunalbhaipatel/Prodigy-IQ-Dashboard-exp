@@ -282,4 +282,3 @@ elif page == "Advanced Analysis":
     render_advanced_analysis(df)
 elif page == "Cost Estimator":
     render_cost_estimator(df)
-)
