@@ -279,30 +279,35 @@ def render_cost_estimator(df):
         nond_config["other_cost"] = st.number_input("Other Cost", value=500, key="nd_other")
 
     def calc_cost(sub_df, config, label):
-        td = sub_df["Total_Dil"].sum()
-        ho = sub_df["Haul_OFF"].sum()
-        intlen = sub_df["IntLength"].sum()
-        dilution = config["dil_rate"] * td
-        haul = config["haul_rate"] * ho
-        screen = config["screen_price"] * config["num_screens"]
-        equipment = (config["equip_cost"] * config["num_shakers"]) / config["shaker_life"]
-        total = dilution + haul + screen + equipment + config["eng_cost"] + config["other_cost"]
-        per_ft = total / intlen if intlen else 0
+        try:
+            td = sub_df["Total_Dil"].fillna(0).sum()
+            ho = sub_df["Haul_OFF"].fillna(0).sum()
+            intlen = sub_df["IntLength"].fillna(0).sum()
+            dilution = config["dil_rate"] * td
+            haul = config["haul_rate"] * ho
+            screen = config["screen_price"] * config["num_screens"]
+            equipment = (config["equip_cost"] * config["num_shakers"]) / config["shaker_life"]
+            total = dilution + haul + screen + equipment + config["eng_cost"] + config["other_cost"]
+            per_ft = total / intlen if intlen else 0
 
-        return {
-            "Label": label,
-            "Cost/ft": per_ft,
-            "Total Cost": total,
-            "Dilution": dilution,
-            "Haul": haul,
-            "Screen": screen,
-            "Equipment": equipment,
-            "Engineering": config["eng_cost"],
-            "Other": config["other_cost"],
-            "Avg LGS%": (sub_df["LGS"].mean() * 100) if "LGS" in sub_df.columns else 0,
-            "DSRE%": (sub_df["DSRE"].mean() * 100) if "DSRE" in sub_df.columns else 0,
-            "Depth": sub_df["MD Depth"].max() if "MD Depth" in sub_df.columns else 0,
-        }
+            return {
+                "Label": label,
+                "Cost/ft": per_ft,
+                "Total Cost": total,
+                "Dilution": dilution,
+                "Haul": haul,
+                "Screen": screen,
+                "Equipment": equipment,
+                "Engineering": config["eng_cost"],
+                "Other": config["other_cost"],
+                "Avg LGS%": (sub_df["LGS"].mean() * 100) if "LGS" in sub_df.columns else 0,
+                "DSRE%": (sub_df["DSRE"].mean() * 100) if "DSRE" in sub_df.columns else 0,
+                "Depth": sub_df["MD Depth"].max() if "MD Depth" in sub_df.columns else 0,
+            }
+        except Exception as e:
+            st.error(f"Calculation error for {label}: {e}")
+            return {"Label": label, "Cost/ft": 0, "Total Cost": 0, "Dilution": 0, "Haul": 0, "Screen": 0, "Equipment": 0,
+                    "Engineering": 0, "Other": 0, "Avg LGS%": 0, "DSRE%": 0, "Depth": 0}
 
     derrick_cost = calc_cost(derrick_df, derrick_config, "Derrick")
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
