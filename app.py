@@ -12,6 +12,8 @@ from enhanced_dashboard_charts import (
     kpi_boxplot,
     stacked_cost_chart
 )
+
+from executive_summary import render_executive_summary
 from executive_summary import render_executive_summary
 from advanced_analysis import render_advanced_analysis
 from cost_estimator import render_cost_estimator
