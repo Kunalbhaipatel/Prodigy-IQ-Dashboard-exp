@@ -186,27 +186,11 @@ def render_advanced_analysis(df):
     st.subheader("📤 Export Filtered Data")
     st.download_button("Download CSV", metric_df.to_csv(index=False), "filtered_advanced_metrics.csv", "text/csv")
 
-import streamlit as st
-import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
-from datetime import datetime
+import pandas as pd
+import streamlit as st
 
-# ------------------------- STYLING -------------------------
-def load_styles():
-    st.markdown("""<style>
-    div[data-testid="metric-container"] {
-        background-color: #fff;
-        padding: 1.2em;
-        border-radius: 15px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-        margin: 0.5em;
-        text-align: center;
-    }
-    </style>""", unsafe_allow_html=True)
-
-# ------------------------- PAGE: COST ESTIMATOR -------------------------
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
 
@@ -234,7 +218,7 @@ def render_cost_estimator(df):
             derrick_df = derrick_df[derrick_df["Well_Name"] == derrick_well]
 
     with col_nd:
-        st.subheader("🧣 Non-Derrick")
+        st.subheader("🟣 Non-Derrick")
         nond_df = df.copy()
         nond_shaker = st.selectbox("Select Flowline Shaker", sorted(nond_df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
         nond_df = nond_df[nond_df["flowline_Shakers"] == nond_shaker]
@@ -279,59 +263,91 @@ def render_cost_estimator(df):
         nond_config["other_cost"] = st.number_input("Other Cost", value=500, key="nd_other")
 
     def calc_cost(sub_df, config, label):
-        try:
-            td = sub_df["Total_Dil"].fillna(0).sum()
-            ho = sub_df["Haul_OFF"].fillna(0).sum()
-            intlen = sub_df["IntLength"].fillna(0).sum()
-            dilution = config["dil_rate"] * td
-            haul = config["haul_rate"] * ho
-            screen = config["screen_price"] * config["num_screens"]
-            equipment = (config["equip_cost"] * config["num_shakers"]) / config["shaker_life"]
-            total = dilution + haul + screen + equipment + config["eng_cost"] + config["other_cost"]
-            per_ft = total / intlen if intlen else 0
+        td = sub_df["Total_Dil"].sum()
+        ho = sub_df["Haul_OFF"].sum()
+        intlen = sub_df["IntLength"].sum()
+        dilution = config["dil_rate"] * td
+        haul = config["haul_rate"] * ho
+        screen = config["screen_price"] * config["num_screens"]
+        equipment = (config["equip_cost"] * config["num_shakers"]) / config["shaker_life"]
+        total = dilution + haul + screen + equipment + config["eng_cost"] + config["other_cost"]
+        per_ft = total / intlen if intlen else 0
 
-            return {
-                "Label": label,
-                "Cost/ft": per_ft,
-                "Total Cost": total,
-                "Dilution": dilution,
-                "Haul": haul,
-                "Screen": screen,
-                "Equipment": equipment,
-                "Engineering": config["eng_cost"],
-                "Other": config["other_cost"],
-                "Avg LGS%": (sub_df["LGS"].mean() * 100) if "LGS" in sub_df.columns else 0,
-                "DSRE%": (sub_df["DSRE"].mean() * 100) if "DSRE" in sub_df.columns else 0,
-                "Depth": sub_df["MD Depth"].max() if "MD Depth" in sub_df.columns else 0,
-            }
-        except Exception as e:
-            st.error(f"Calculation error for {label}: {e}")
-            return {"Label": label, "Cost/ft": 0, "Total Cost": 0, "Dilution": 0, "Haul": 0, "Screen": 0, "Equipment": 0,
-                    "Engineering": 0, "Other": 0, "Avg LGS%": 0, "DSRE%": 0, "Depth": 0}
+        return {
+            "Label": label,
+            "Cost/ft": per_ft,
+            "Total Cost": total,
+            "Dilution": dilution,
+            "Haul": haul,
+            "Screen": screen,
+            "Equipment": equipment,
+            "Engineering": config["eng_cost"],
+            "Other": config["other_cost"],
+            "Avg LGS%": (sub_df["LGS"].mean() * 100) if "LGS" in sub_df.columns else 0,
+            "DSRE%": (sub_df["DSRE"].mean() * 100) if "DSRE" in sub_df.columns else 0,
+            "Depth": sub_df["MD Depth"].max() if "MD Depth" in sub_df.columns else 0,
+        }
 
     derrick_cost = calc_cost(derrick_df, derrick_config, "Derrick")
     nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
     summary = pd.DataFrame([derrick_cost, nond_cost])
 
-    st.markdown("### 💡 Summary Cost Comparison")
-    st.dataframe(summary.style.format("{:.2f}"))
+    delta_total = nond_cost['Total Cost'] - derrick_cost['Total Cost']
+    delta_ft = nond_cost['Cost/ft'] - derrick_cost['Cost/ft']
 
-    fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison")
-    fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled")
+    bg_color_total = "#d4edda" if delta_total >= 0 else "#f8d7da"
+    text_color_total = "green" if delta_total >= 0 else "red"
+    bg_color_ft = "#d4edda" if delta_ft >= 0 else "#f8d7da"
+    text_color_ft = "green" if delta_ft >= 0 else "red"
 
-    pie_d = px.pie(values=[derrick_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]], 
-                   names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"], title="Derrick Cost Breakdown")
+    st.markdown(f"""
+        <div style='display: flex; gap: 2rem; margin-top: 1rem;'>
+            <div style='flex: 1; padding: 1rem; border: 2px solid #ccc; border-radius: 10px; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); background-color: {bg_color_total};'>
+                <h4 style='margin: 0 0 0.5rem 0; color: {text_color_total};'>💵 Total Cost Saving</h4>
+                <div style='font-size: 24px; font-weight: bold; color: {text_color_total};'>${delta_total:,.0f}</div>
+            </div>
+            <div style='flex: 1; padding: 1rem; border: 2px solid #ccc; border-radius: 10px; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); background-color: {bg_color_ft};'>
+                <h4 style='margin: 0 0 0.5rem 0; color: {text_color_ft};'>📏 Cost Per Foot Saving</h4>
+                <div style='font-size: 24px; font-weight: bold; color: {text_color_ft};'>${delta_ft:,.2f}</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
-    pie_nd = px.pie(values=[nond_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]], 
-                    names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"], title="Non-Derrick Cost Breakdown")
+    st.markdown("#### 📊 Cost Breakdown Pie Charts")
+    pie1, pie2 = st.columns(2)
 
-    col1, col2 = st.columns(2)
-    with col1:
+    with pie1:
+        derrick_fig = px.pie(
+            names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"],
+            values=[derrick_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]],
+            title="Derrick Cost Breakdown",
+            color_discrete_sequence=["#1b5e20", "#2e7d32", "#388e3c", "#43a047", "#4caf50", "#66bb6a"]
+        )
+        derrick_fig.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(derrick_fig, use_container_width=True)
+
+    with pie2:
+        nond_fig = px.pie(
+            names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"],
+            values=[nond_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]],
+            title="Non-Derrick Cost Breakdown",
+            color_discrete_sequence=["#424242", "#616161", "#757575", "#9e9e9e", "#bdbdbd", "#e0e0e0"]
+        )
+        nond_fig.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(nond_fig, use_container_width=True)
+
+    st.markdown("#### 📉 Cost per Foot and Depth Comparison")
+    bar1, bar2 = st.columns(2)
+
+    with bar1:
+        fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison",
+                          color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
         st.plotly_chart(fig_cost, use_container_width=True)
-        st.plotly_chart(pie_d, use_container_width=True)
-    with col2:
+
+    with bar2:
+        fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
+                           color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
         st.plotly_chart(fig_depth, use_container_width=True)
-        st.plotly_chart(pie_nd, use_container_width=True)
 
 # ------------------------- LOAD DATA -------------------------
 load_styles()
