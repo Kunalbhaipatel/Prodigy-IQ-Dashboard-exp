@@ -22,26 +22,6 @@ def load_styles():
     }
     </style>""", unsafe_allow_html=True)
 
-# ------------------------- (All other functions unchanged) -------------------------
-# [apply_shared_filters, render_multi_well, render_sales_analysis, render_cost_estimator, render_advanced_analysis]
-
-# ------------------------- LOAD DATA -------------------------
-df = pd.read_csv("Refine Sample.csv")
-df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
-
-# ------------------------- MAIN NAVIGATION -------------------------
-load_styles()
-page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis", "Cost Estimator"])
-
-if page == "Multi-Well Comparison":
-    render_multi_well(df)
-elif page == "Sales Analysis":
-    render_sales_analysis(df)
-elif page == "Advanced Analysis":
-    render_advanced_analysis(df)
-elif page == "Cost Estimator":
-    render_cost_estimator(df)
-
 # ------------------------- SHARED FILTERS -------------------------
 def apply_shared_filters(df):
     st.sidebar.header("Filters")
@@ -81,6 +61,23 @@ def apply_shared_filters(df):
         filtered = filtered[(filtered["AMW"] >= low) & (filtered["AMW"] < high)]
 
     return filtered
+
+# ------------------------- LOAD DATA -------------------------
+df = pd.read_csv("Refine Sample.csv")
+df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
+
+# ------------------------- MAIN NAVIGATION -------------------------
+load_styles()
+page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis", "Cost Estimator"])
+
+if page == "Multi-Well Comparison":
+    render_multi_well(df)
+elif page == "Sales Analysis":
+    render_sales_analysis(df)
+elif page == "Advanced Analysis":
+    render_advanced_analysis(df)
+elif page == "Cost Estimator":
+    render_cost_estimator(df)
 
 # ------------------------- PAGE: MULTI-WELL -------------------------
 def render_multi_well(df):
