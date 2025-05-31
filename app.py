@@ -366,7 +366,7 @@ df = pd.read_csv("Refine Sample.csv")
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
 # ------------------------- MAIN NAVIGATION -------------------------
-page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis"])
+page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis","Cost Estimator"])
 
 if page == "Multi-Well Comparison":
     render_multi_well(df)
