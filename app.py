@@ -98,31 +98,76 @@ def render_multi_well(df):
         fig = px.bar(df, x="Well_Name", y="ROP", color="Operator")
         st.plotly_chart(fig, use_container_width=True)
 
+    st.subheader("📍 Well Map")
+    if "Well_Coord_Lat" in df and "Well_Coord_Lon" in df:
+        fig_map = px.scatter_mapbox(df.dropna(subset=["Well_Coord_Lat", "Well_Coord_Lon"]),
+                                    lat="Well_Coord_Lat", lon="Well_Coord_Lon", hover_name="Well_Name",
+                                    zoom=4, height=400)
+        fig_map.update_layout(mapbox_style="open-street-map")
+        st.plotly_chart(fig_map, use_container_width=True)
+
 # ------------------------- PAGE: SALES ANALYSIS -------------------------
 def render_sales_analysis(df):
     st.title("📈 Prodigy IQ Sales Analysis")
     df["Month"] = df["TD_Date"].dt.to_period("M").astype(str)
     volume = df.groupby("Month").size().reset_index(name="Well Count")
     st.subheader("🧭 Wells Completed per Month")
-    fig = px.line(volume, x="Month", y="Well Count", markers=True)
+    fig = px.bar(volume, x="Month", y="Well Count", title="Monthly Completion Volume")
     st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("🧃 Fluid Breakdown by Operator")
+    if all(col in df.columns for col in ["Base_Oil", "Water", "Chemicals"]):
+        fluid_df = df.groupby("Operator")[["Base_Oil", "Water", "Chemicals"]].sum().reset_index()
+        melted = pd.melt(fluid_df, id_vars="Operator", var_name="Fluid", value_name="Volume")
+        fig2 = px.bar(melted, x="Operator", y="Volume", color="Fluid", barmode="group")
+        st.plotly_chart(fig2, use_container_width=True)
 
 # ------------------------- PAGE: ADVANCED ANALYSIS -------------------------
 def render_advanced_analysis(df):
     st.title("📌 Prodigy IQ Advanced Analysis")
-    st.subheader("Advanced KPI Summary")
-    if "Total_SCE" in df and "IntLength" in df:
+    st.sidebar.header("🛠️ Manual Input")
+    flow_rate = st.sidebar.number_input("Total Flow Rate", value=800)
+    screens = st.sidebar.number_input("Screens", value=3)
+    area = st.sidebar.number_input("Screen Area", value=2.0)
+
+    def safe_div(n, d): return n / d if d else 0
+
+    st.subheader("Advanced Metrics")
+    if "IntLength" in df and "Total_SCE" in df:
         df["STE"] = df["Total_SCE"] / df["IntLength"]
-        st.metric("Shaker Throughput Efficiency (avg)", f"{df['STE'].mean():.2f}")
-        fig = px.bar(df, x="Well_Name", y="STE", color="Operator")
+        df["SLI"] = flow_rate / (screens * area)
+        df["CDR"] = df.get("Chemicals", 0) / df["IntLength"]
+        df["MRE"] = 100 - df["STE"] * 100
+
+        k1, k2, k3 = st.columns(3)
+        k1.metric("Shaker Throughput Efficiency", f"{df['STE'].mean():.2f}")
+        k2.metric("Screen Loading Index", f"{df['SLI'].mean():.2f}")
+        k3.metric("Mud Retention Efficiency", f"{df['MRE'].mean():.2f}%")
+
+        st.subheader("Metric Comparison by Well")
+        fig = px.bar(df, x="Well_Name", y="STE", color="Operator", title="STE by Well")
         st.plotly_chart(fig, use_container_width=True)
 
 # ------------------------- PAGE: COST ESTIMATOR -------------------------
 def render_cost_estimator(df):
     st.title("💰 Prodigy IQ Cost Estimator")
     st.subheader("Summary Cost Comparison")
-    # Simplified example. Add real calculation logic as needed.
-    st.write("(Cost Estimator logic will go here, e.g., dilution, haul-off, equipment, per-ft cost breakdown etc.)")
+    df = df.copy()
+    if all(col in df.columns for col in ["Total_Dil", "Haul_OFF", "IntLength"]):
+        td = df["Total_Dil"].sum()
+        ho = df["Haul_OFF"].sum()
+        il = df["IntLength"].sum()
+        dilution_cost = 100 * td
+        haul_cost = 20 * ho
+        other = 5000
+        total = dilution_cost + haul_cost + other
+        cost_per_ft = safe_div(total, il)
+
+        st.metric("Total Cost", f"${total:,.0f}")
+        st.metric("Cost per ft", f"${cost_per_ft:,.2f}")
+        st.subheader("Cost Component Breakdown")
+        fig = px.pie(names=["Dilution", "Haul", "Other"], values=[dilution_cost, haul_cost, other])
+        st.plotly_chart(fig, use_container_width=True)
 
 # ------------------------- LOAD DATA -------------------------
 load_styles()
