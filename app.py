@@ -127,8 +127,6 @@ df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 # ------------------------- PAGE: MULTI-WELL COMPARISON -------------------------
 def render_multi_well(df):
     st.title("🚀 Prodigy IQ Multi-Well Dashboard")
-    filtered_df = render_filter_panel(df)
-
     st.subheader("Summary Metrics")
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("📏 IntLength", f"{filtered_df['IntLength'].mean():.1f}")
@@ -248,8 +246,6 @@ def render_advanced_analysis(df):
 # ------------------------- PAGE: COST ESTIMATOR -------------------------
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
-    df = render_filter_panel(df)
-
     col_d, col_nd = st.columns(2)
     with col_d:
         st.markdown("#### 🟩 Derrick Setup")
