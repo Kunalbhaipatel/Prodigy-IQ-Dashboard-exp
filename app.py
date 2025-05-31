@@ -210,60 +210,123 @@ def load_styles():
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
 
-    search_term = st.text_input("🔍 Search Wells, Operators, or Contractors").lower()
-    if search_term:
-        df = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(search_term).any(), axis=1)]
+    col_d, col_nd = st.columns(2)
 
-    derrick_df = df[df['flowline_Shakers'].str.contains("derrick", case=False, na=False)]
-    nond_df = df[~df['flowline_Shakers'].str.contains("derrick", case=False, na=False)]
+    with col_d:
+        st.subheader("🟩 Derrick")
+        derrick_df = df.copy()
+        derrick_shaker = st.selectbox("Select Flowline Shaker", sorted(derrick_df["flowline_Shakers"].dropna().unique()), key="d_shaker")
+        derrick_df = derrick_df[derrick_df["flowline_Shakers"] == derrick_shaker]
 
-    derrick_costs = derrick_df.copy()
-    nond_costs = nond_df.copy()
+        derrick_ops = sorted(derrick_df["Operator"].dropna().unique())
+        derrick_operator = st.selectbox("Select Operator", ["All"] + derrick_ops, key="d_operator")
+        if derrick_operator != "All":
+            derrick_df = derrick_df[derrick_df["Operator"] == derrick_operator]
 
-    for d in [derrick_costs, nond_costs]:
-        d['Dilution Cost'] = d['Total_Dil'] * 100
-        d['Haul Cost'] = d['Haul_OFF'] * 20
-        d['Other Cost'] = 1500
-        d['Total Cost'] = d['Dilution Cost'] + d['Haul Cost'] + d['Other Cost']
-        d['Cost/ft'] = d['Total Cost'] / d['IntLength']
+        derrick_contracts = sorted(derrick_df["Contractor"].dropna().unique())
+        derrick_contractor = st.selectbox("Select Contractor", ["All"] + derrick_contracts, key="d_contract")
+        if derrick_contractor != "All":
+            derrick_df = derrick_df[derrick_df["Contractor"] == derrick_contractor]
 
-    derrick_avg = derrick_costs[['Dilution Cost', 'Haul Cost', 'Other Cost', 'Total Cost', 'Cost/ft']].mean()
-    nond_avg = nond_costs[['Dilution Cost', 'Haul Cost', 'Other Cost', 'Total Cost', 'Cost/ft']].mean()
+        derrick_wells = sorted(derrick_df["Well_Name"].dropna().unique())
+        derrick_well = st.selectbox("Select Well Name", ["All"] + derrick_wells, key="d_well")
+        if derrick_well != "All":
+            derrick_df = derrick_df[derrick_df["Well_Name"] == derrick_well]
+
+    with col_nd:
+        st.subheader("🧣 Non-Derrick")
+        nond_df = df.copy()
+        nond_shaker = st.selectbox("Select Flowline Shaker", sorted(nond_df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
+        nond_df = nond_df[nond_df["flowline_Shakers"] == nond_shaker]
+
+        nond_ops = sorted(nond_df["Operator"].dropna().unique())
+        nond_operator = st.selectbox("Select Operator", ["All"] + nond_ops, key="nd_operator")
+        if nond_operator != "All":
+            nond_df = nond_df[nond_df["Operator"] == nond_operator]
+
+        nond_contracts = sorted(nond_df["Contractor"].dropna().unique())
+        nond_contractor = st.selectbox("Select Contractor", ["All"] + nond_contracts, key="nd_contract")
+        if nond_contractor != "All":
+            nond_df = nond_df[nond_df["Contractor"] == nond_contractor]
+
+        nond_wells = sorted(nond_df["Well_Name"].dropna().unique())
+        nond_well = st.selectbox("Select Well Name", ["All"] + nond_wells, key="nd_well")
+        if nond_well != "All":
+            nond_df = nond_df[nond_df["Well_Name"] == nond_well]
+
+    derrick_config, nond_config = {}, {}
+
+    with st.expander("🎯 Derrick Configuration"):
+        derrick_config["dil_rate"] = st.number_input("Dilution Cost Rate ($/unit)", value=100, key="d_dil")
+        derrick_config["haul_rate"] = st.number_input("Haul-Off Cost Rate ($/unit)", value=20, key="d_haul")
+        derrick_config["screen_price"] = st.number_input("Screen Price", value=500, key="d_scr_price")
+        derrick_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="d_scr_cnt")
+        derrick_config["equip_cost"] = st.number_input("Total Equipment Cost", value=100000, key="d_equip")
+        derrick_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="d_shkrs")
+        derrick_config["shaker_life"] = st.number_input("Shaker Life (Years)", value=7, key="d_life")
+        derrick_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="d_eng")
+        derrick_config["other_cost"] = st.number_input("Other Cost", value=500, key="d_other")
+
+    with st.expander("🎯 Non-Derrick Configuration"):
+        nond_config["dil_rate"] = st.number_input("Dilution Cost Rate ($/unit)", value=100, key="nd_dil")
+        nond_config["haul_rate"] = st.number_input("Haul-Off Cost Rate ($/unit)", value=20, key="nd_haul")
+        nond_config["screen_price"] = st.number_input("Screen Price", value=500, key="nd_scr_price")
+        nond_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="nd_scr_cnt")
+        nond_config["equip_cost"] = st.number_input("Total Equipment Cost", value=100000, key="nd_equip")
+        nond_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="nd_shkrs")
+        nond_config["shaker_life"] = st.number_input("Shaker Life (Years)", value=7, key="nd_life")
+        nond_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="nd_eng")
+        nond_config["other_cost"] = st.number_input("Other Cost", value=500, key="nd_other")
+
+    def calc_cost(sub_df, config, label):
+        td = sub_df["Total_Dil"].sum()
+        ho = sub_df["Haul_OFF"].sum()
+        intlen = sub_df["IntLength"].sum()
+        dilution = config["dil_rate"] * td
+        haul = config["haul_rate"] * ho
+        screen = config["screen_price"] * config["num_screens"]
+        equipment = (config["equip_cost"] * config["num_shakers"]) / config["shaker_life"]
+        total = dilution + haul + screen + equipment + config["eng_cost"] + config["other_cost"]
+        per_ft = total / intlen if intlen else 0
+
+        return {
+            "Label": label,
+            "Cost/ft": per_ft,
+            "Total Cost": total,
+            "Dilution": dilution,
+            "Haul": haul,
+            "Screen": screen,
+            "Equipment": equipment,
+            "Engineering": config["eng_cost"],
+            "Other": config["other_cost"],
+            "Avg LGS%": (sub_df["LGS"].mean() * 100) if "LGS" in sub_df.columns else 0,
+            "DSRE%": (sub_df["DSRE"].mean() * 100) if "DSRE" in sub_df.columns else 0,
+            "Depth": sub_df["MD Depth"].max() if "MD Depth" in sub_df.columns else 0,
+        }
+
+    derrick_cost = calc_cost(derrick_df, derrick_config, "Derrick")
+    nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
+    summary = pd.DataFrame([derrick_cost, nond_cost])
+
+    st.markdown("### 💡 Summary Cost Comparison")
+    st.dataframe(summary.style.format("{:.2f}"))
+
+    fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison")
+    fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled")
+
+    pie_d = px.pie(values=[derrick_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]], 
+                   names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"], title="Derrick Cost Breakdown")
+
+    pie_nd = px.pie(values=[nond_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]], 
+                    names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"], title="Non-Derrick Cost Breakdown")
 
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("🟩 Derrick Avg Cost/ft", f"${derrick_avg['Cost/ft']:.2f}")
+        st.plotly_chart(fig_cost, use_container_width=True)
+        st.plotly_chart(pie_d, use_container_width=True)
     with col2:
-        st.metric("🟣 Non-Derrick Avg Cost/ft", f"${nond_avg['Cost/ft']:.2f}")
-
-    savings = nond_avg['Cost/ft'] - derrick_avg['Cost/ft']
-    color = "green" if savings > 0 else "red"
-    st.subheader("🎯 Potential Savings Per Foot")
-    st.markdown(f"<h2 style='color:{color}'>${savings:.2f}</h2>", unsafe_allow_html=True)
-
-    st.subheader("📊 Cost Breakdown Comparison")
-    breakdown = pd.DataFrame({
-        'Category': ['Dilution', 'Haul-Off', 'Other'],
-        'Derrick': [derrick_avg['Dilution Cost'], derrick_avg['Haul Cost'], derrick_avg['Other Cost']],
-        'Non-Derrick': [nond_avg['Dilution Cost'], nond_avg['Haul Cost'], nond_avg['Other Cost']]
-    })
-
-    fig = go.Figure()
-    fig.add_trace(go.Bar(name='Derrick', x=breakdown['Category'], y=breakdown['Derrick'], marker_color='green'))
-    fig.add_trace(go.Bar(name='Non-Derrick', x=breakdown['Category'], y=breakdown['Non-Derrick'], marker_color='purple'))
-    fig.update_layout(barmode='group', title='Average Cost Breakdown')
-    st.plotly_chart(fig, use_container_width=True)
-
-    st.subheader("🥧 Pie Charts")
-    pie1, pie2 = st.columns(2)
-
-    with pie1:
-        fig1 = px.pie(values=derrick_avg[:-2], names=['Dilution', 'Haul-Off', 'Other'], title='Derrick Cost Split', color_discrete_sequence=px.colors.sequential.Greens)
-        st.plotly_chart(fig1, use_container_width=True)
-
-    with pie2:
-        fig2 = px.pie(values=nond_avg[:-2], names=['Dilution', 'Haul-Off', 'Other'], title='Non-Derrick Cost Split', color_discrete_sequence=px.colors.sequential.Purples)
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig_depth, use_container_width=True)
+        st.plotly_chart(pie_nd, use_container_width=True)
 
 # ------------------------- LOAD DATA -------------------------
 load_styles()
