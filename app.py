@@ -19,52 +19,45 @@ def load_styles():
         margin: 0.5em;
         text-align: center;
     }
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label {
+        background: #f8f9fa;
+        border-radius: 10px;
+        margin: 0.2em 0;
+        padding: 0.5em;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
+        background: #e9ecef;
+    }
     </style>""", unsafe_allow_html=True)
 
-# ------------------------- SHARED FILTERS -------------------------
-def apply_shared_filters(df):
-    st.sidebar.header("📊 Shared Filters")
-    search_term = st.sidebar.text_input("🔍 Search Anything").lower()
-    filtered = df.copy()
+# ------------------------- FILTER PANELS -------------------------
+def render_filter_panel(df):
+    with st.sidebar:
+        with st.expander("🌐 Global Filters", expanded=False):
+            well_filter = st.multiselect("Select Well(s)", sorted(df["Well_Name"].dropna().unique()), key="f1")
+            if well_filter:
+                df = df[df["Well_Name"].isin(well_filter)]
 
-    if search_term:
-        filtered = filtered[filtered.apply(lambda row: row.astype(str).str.lower().str.contains(search_term).any(), axis=1)]
+        with st.expander("🔁 Common Filters", expanded=True):
+            shaker_filter = st.selectbox("Flowline Shaker", ["All"] + sorted(df["flowline_Shakers"].dropna().unique()), key="f2")
+            if shaker_filter != "All":
+                df = df[df["flowline_Shakers"] == shaker_filter]
 
-    for col in ["Operator", "Contractor", "flowline_Shakers", "Hole_Size"]:
-        if col in filtered.columns:
-            options = sorted(filtered[col].dropna().astype(str).unique().tolist())
-            selected = st.sidebar.selectbox(col, ["All"] + options, key=col)
-            if selected != "All":
-                filtered = filtered[filtered[col].astype(str) == selected]
+            operator_filter = st.selectbox("Operator", ["All"] + sorted(df["Operator"].dropna().unique()), key="f3")
+            if operator_filter != "All":
+                df = df[df["Operator"] == operator_filter]
 
-    if "TD_Date" in filtered.columns:
-        filtered["TD_Date"] = pd.to_datetime(filtered["TD_Date"], errors="coerce")
-        year_range = st.sidebar.slider("TD Date Range", 2020, 2026, (2020, 2026))
-        filtered = filtered[(filtered["TD_Date"].dt.year >= year_range[0]) & (filtered["TD_Date"].dt.year <= year_range[1])]
+            contractor_filter = st.selectbox("Contractor", ["All"] + sorted(df["Contractor"].dropna().unique()), key="f4")
+            if contractor_filter != "All":
+                df = df[df["Contractor"] == contractor_filter]
 
-    if "MD Depth" in filtered.columns:
-        depth_bins = {
-            "<5000 ft": (0, 5000), "5000–10000 ft": (5000, 10000),
-            "10000–15000 ft": (10000, 15000), "15000–20000 ft": (15000, 20000),
-            "20000–25000 ft": (20000, 25000), ">25000 ft": (25000, float("inf"))
-        }
-        selected_depth = st.sidebar.selectbox("Depth", ["All"] + list(depth_bins.keys()))
-        if selected_depth != "All":
-            low, high = depth_bins[selected_depth]
-            filtered = filtered[(filtered["MD Depth"] >= low) & (filtered["MD Depth"] < high)]
-
-    if "AMW" in filtered.columns:
-        mw_bins = {
-            "<3": (0, 3), "3–6": (3, 6), "6–9": (6, 9),
-            "9–11": (9, 11), "11–14": (11, 14), "14–30": (14, 30)
-        }
-        selected_mw = st.sidebar.selectbox("Average Mud Weight", ["All"] + list(mw_bins.keys()))
-        if selected_mw != "All":
-            low, high = mw_bins[selected_mw]
-            filtered = filtered[(filtered["AMW"] >= low) & (filtered["AMW"] < high)]
-
-    return filtered
-
+        with st.expander("⚙️ Advanced Filters", expanded=False):
+            year_range = st.slider("TD Date Range", 2020, 2026, (2020, 2026))
+            df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
+            df = df[df["TD_Date"].dt.year.between(year_range[0], year_range[1])]
+    return df
 # ------------------------- PAGE: MULTI-WELL COMPARISON -------------------------
 def render_multi_well(df):
     st.title("🚀 Prodigy IQ Multi-Well Dashboard")
@@ -186,86 +179,80 @@ def render_advanced_analysis(df):
     st.subheader("📤 Export Filtered Data")
     st.download_button("Download CSV", metric_df.to_csv(index=False), "filtered_advanced_metrics.csv", "text/csv")
 
-import plotly.express as px
-import plotly.graph_objects as go
-import pandas as pd
-import streamlit as st
-
+# ------------------------- PAGE: COST ESTIMATOR -------------------------
 def render_cost_estimator(df):
     st.title("💰 Flowline Shaker Cost Comparison")
+    df = render_filter_panel(df)
 
     col_d, col_nd = st.columns(2)
-
     with col_d:
-        st.subheader("🟩 Derrick")
-        derrick_df = df.copy()
-        derrick_shaker = st.selectbox("Select Flowline Shaker", sorted(derrick_df["flowline_Shakers"].dropna().unique()), key="d_shaker")
-        derrick_df = derrick_df[derrick_df["flowline_Shakers"] == derrick_shaker]
-
-        derrick_ops = sorted(derrick_df["Operator"].dropna().unique())
-        derrick_operator = st.selectbox("Select Operator", ["All"] + derrick_ops, key="d_operator")
-        if derrick_operator != "All":
-            derrick_df = derrick_df[derrick_df["Operator"] == derrick_operator]
-
-        derrick_contracts = sorted(derrick_df["Contractor"].dropna().unique())
-        derrick_contractor = st.selectbox("Select Contractor", ["All"] + derrick_contracts, key="d_contract")
-        if derrick_contractor != "All":
-            derrick_df = derrick_df[derrick_df["Contractor"] == derrick_contractor]
-
-        derrick_wells = sorted(derrick_df["Well_Name"].dropna().unique())
-        derrick_well = st.selectbox("Select Well Name", ["All"] + derrick_wells, key="d_well")
-        if derrick_well != "All":
-            derrick_df = derrick_df[derrick_df["Well_Name"] == derrick_well]
-
+        st.markdown("#### 🟩 Derrick Setup")
     with col_nd:
-        st.subheader("🟣 Non-Derrick")
-        nond_df = df.copy()
-        nond_shaker = st.selectbox("Select Flowline Shaker", sorted(nond_df["flowline_Shakers"].dropna().unique()), key="nd_shaker")
-        nond_df = nond_df[nond_df["flowline_Shakers"] == nond_shaker]
-
-        nond_ops = sorted(nond_df["Operator"].dropna().unique())
-        nond_operator = st.selectbox("Select Operator", ["All"] + nond_ops, key="nd_operator")
-        if nond_operator != "All":
-            nond_df = nond_df[nond_df["Operator"] == nond_operator]
-
-        nond_contracts = sorted(nond_df["Contractor"].dropna().unique())
-        nond_contractor = st.selectbox("Select Contractor", ["All"] + nond_contracts, key="nd_contract")
-        if nond_contractor != "All":
-            nond_df = nond_df[nond_df["Contractor"] == nond_contractor]
-
-        nond_wells = sorted(nond_df["Well_Name"].dropna().unique())
-        nond_well = st.selectbox("Select Well Name", ["All"] + nond_wells, key="nd_well")
-        if nond_well != "All":
-            nond_df = nond_df[nond_df["Well_Name"] == nond_well]
+        st.markdown("#### 🟣 Non-Derrick Setup")
 
     derrick_config, nond_config = {}, {}
 
     with st.expander("🎯 Derrick Configuration"):
-        derrick_config["dil_rate"] = st.number_input("Dilution Cost Rate ($/unit)", value=100, key="d_dil")
-        derrick_config["haul_rate"] = st.number_input("Haul-Off Cost Rate ($/unit)", value=20, key="d_haul")
-        derrick_config["screen_price"] = st.number_input("Screen Price", value=500, key="d_scr_price")
-        derrick_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="d_scr_cnt")
-        derrick_config["equip_cost"] = st.number_input("Total Equipment Cost", value=100000, key="d_equip")
-        derrick_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="d_shkrs")
-        derrick_config["shaker_life"] = st.number_input("Shaker Life (Years)", value=7, key="d_life")
-        derrick_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="d_eng")
-        derrick_config["other_cost"] = st.number_input("Other Cost", value=500, key="d_other")
-
+        derrick_config = get_config("d")
     with st.expander("🎯 Non-Derrick Configuration"):
-        nond_config["dil_rate"] = st.number_input("Dilution Cost Rate ($/unit)", value=100, key="nd_dil")
-        nond_config["haul_rate"] = st.number_input("Haul-Off Cost Rate ($/unit)", value=20, key="nd_haul")
-        nond_config["screen_price"] = st.number_input("Screen Price", value=500, key="nd_scr_price")
-        nond_config["num_screens"] = st.number_input("Screens used per rig", value=1, key="nd_scr_cnt")
-        nond_config["equip_cost"] = st.number_input("Total Equipment Cost", value=100000, key="nd_equip")
-        nond_config["num_shakers"] = st.number_input("Number of Shakers Installed", value=3, key="nd_shkrs")
-        nond_config["shaker_life"] = st.number_input("Shaker Life (Years)", value=7, key="nd_life")
-        nond_config["eng_cost"] = st.number_input("Engineering Day Rate", value=1000, key="nd_eng")
-        nond_config["other_cost"] = st.number_input("Other Cost", value=500, key="nd_other")
+        nond_config = get_config("nd")
 
-    def calc_cost(sub_df, config, label):
-        td = sub_df["Total_Dil"].sum()
-        ho = sub_df["Haul_OFF"].sum()
-        intlen = sub_df["IntLength"].sum()
+    derrick_cost = calc_cost(df, derrick_config, "Derrick")
+    nond_cost = calc_cost(df, nond_config, "Non-Derrick")
+    summary = pd.DataFrame([derrick_cost, nond_cost])
+
+    delta_total = nond_cost['Total Cost'] - derrick_cost['Total Cost']
+    delta_ft = nond_cost['Cost/ft'] - derrick_cost['Cost/ft']
+
+    st.markdown("### 💡 Summary KPIs")
+    k1, k2 = st.columns(2)
+    with k1:
+        st.metric("💵 Total Cost Saving", f"${delta_total:,.0f}", delta_color="inverse")
+    with k2:
+        st.metric("📏 Cost/ft Saving", f"${delta_ft:,.2f}", delta_color="inverse")
+
+    st.markdown("### 📊 KPI Breakdown")
+    st.dataframe(summary.style.format("{:.2f}"))
+
+    pie1, pie2 = st.columns(2)
+    with pie1:
+        fig_d = px.pie(summary.query("Label == 'Derrick'"), names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"], 
+                       values=[derrick_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]],
+                       title="Derrick Breakdown")
+        st.plotly_chart(fig_d, use_container_width=True)
+    with pie2:
+        fig_nd = px.pie(summary.query("Label == 'Non-Derrick'"), names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"],
+                        values=[nond_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]],
+                        title="Non-Derrick Breakdown")
+        st.plotly_chart(fig_nd, use_container_width=True)
+
+    st.markdown("### 📈 Charts")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.plotly_chart(px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot"), use_container_width=True)
+    with c2:
+        st.plotly_chart(px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth"), use_container_width=True)
+
+# ------------------------- CONFIG FUNCTION -------------------------
+def get_config(prefix):
+    return {
+        "dil_rate": st.number_input("Dilution Cost Rate ($/unit)", value=100, key=f"{prefix}_dil"),
+        "haul_rate": st.number_input("Haul-Off Cost Rate ($/unit)", value=20, key=f"{prefix}_haul"),
+        "screen_price": st.number_input("Screen Price", value=500, key=f"{prefix}_scr_price"),
+        "num_screens": st.number_input("Screens used per rig", value=1, key=f"{prefix}_scr_cnt"),
+        "equip_cost": st.number_input("Total Equipment Cost", value=100000, key=f"{prefix}_equip"),
+        "num_shakers": st.number_input("Number of Shakers Installed", value=3, key=f"{prefix}_shkrs"),
+        "shaker_life": st.number_input("Shaker Life (Years)", value=7, key=f"{prefix}_life"),
+        "eng_cost": st.number_input("Engineering Day Rate", value=1000, key=f"{prefix}_eng"),
+        "other_cost": st.number_input("Other Cost", value=500, key=f"{prefix}_other")
+    }
+
+# ------------------------- CALC FUNCTION -------------------------
+def calc_cost(sub_df, config, label):
+    try:
+        td = sub_df["Total_Dil"].fillna(0).sum()
+        ho = sub_df["Haul_OFF"].fillna(0).sum()
+        intlen = sub_df["IntLength"].fillna(0).sum()
         dilution = config["dil_rate"] * td
         haul = config["haul_rate"] * ho
         screen = config["screen_price"] * config["num_screens"]
@@ -287,67 +274,10 @@ def render_cost_estimator(df):
             "DSRE%": (sub_df["DSRE"].mean() * 100) if "DSRE" in sub_df.columns else 0,
             "Depth": sub_df["MD Depth"].max() if "MD Depth" in sub_df.columns else 0,
         }
-
-    derrick_cost = calc_cost(derrick_df, derrick_config, "Derrick")
-    nond_cost = calc_cost(nond_df, nond_config, "Non-Derrick")
-    summary = pd.DataFrame([derrick_cost, nond_cost])
-
-    delta_total = nond_cost['Total Cost'] - derrick_cost['Total Cost']
-    delta_ft = nond_cost['Cost/ft'] - derrick_cost['Cost/ft']
-
-    bg_color_total = "#d4edda" if delta_total >= 0 else "#f8d7da"
-    text_color_total = "green" if delta_total >= 0 else "red"
-    bg_color_ft = "#d4edda" if delta_ft >= 0 else "#f8d7da"
-    text_color_ft = "green" if delta_ft >= 0 else "red"
-
-    st.markdown(f"""
-        <div style='display: flex; gap: 2rem; margin-top: 1rem;'>
-            <div style='flex: 1; padding: 1rem; border: 2px solid #ccc; border-radius: 10px; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); background-color: {bg_color_total};'>
-                <h4 style='margin: 0 0 0.5rem 0; color: {text_color_total};'>💵 Total Cost Saving</h4>
-                <div style='font-size: 24px; font-weight: bold; color: {text_color_total};'>${delta_total:,.0f}</div>
-            </div>
-            <div style='flex: 1; padding: 1rem; border: 2px solid #ccc; border-radius: 10px; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); background-color: {bg_color_ft};'>
-                <h4 style='margin: 0 0 0.5rem 0; color: {text_color_ft};'>📏 Cost Per Foot Saving</h4>
-                <div style='font-size: 24px; font-weight: bold; color: {text_color_ft};'>${delta_ft:,.2f}</div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("#### 📊 Cost Breakdown Pie Charts")
-    pie1, pie2 = st.columns(2)
-
-    with pie1:
-        derrick_fig = px.pie(
-            names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"],
-            values=[derrick_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]],
-            title="Derrick Cost Breakdown",
-            color_discrete_sequence=["#1b5e20", "#2e7d32", "#388e3c", "#43a047", "#4caf50", "#66bb6a"]
-        )
-        derrick_fig.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(derrick_fig, use_container_width=True)
-
-    with pie2:
-        nond_fig = px.pie(
-            names=["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"],
-            values=[nond_cost[k] for k in ["Dilution", "Haul", "Screen", "Equipment", "Engineering", "Other"]],
-            title="Non-Derrick Cost Breakdown",
-            color_discrete_sequence=["#424242", "#616161", "#757575", "#9e9e9e", "#bdbdbd", "#e0e0e0"]
-        )
-        nond_fig.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(nond_fig, use_container_width=True)
-
-    st.markdown("#### 📉 Cost per Foot and Depth Comparison")
-    bar1, bar2 = st.columns(2)
-
-    with bar1:
-        fig_cost = px.bar(summary, x="Label", y="Cost/ft", color="Label", title="Cost per Foot Comparison",
-                          color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
-        st.plotly_chart(fig_cost, use_container_width=True)
-
-    with bar2:
-        fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled",
-                           color_discrete_map={"Derrick": "#007635", "Non-Derrick": "grey"})
-        st.plotly_chart(fig_depth, use_container_width=True)
+    except Exception as e:
+        st.error(f"Calculation error for {label}: {e}")
+        return {"Label": label, "Cost/ft": 0, "Total Cost": 0, "Dilution": 0, "Haul": 0, "Screen": 0, "Equipment": 0,
+                "Engineering": 0, "Other": 0, "Avg LGS%": 0, "DSRE%": 0, "Depth": 0}
 
 # ------------------------- LOAD DATA -------------------------
 load_styles()
@@ -357,12 +287,16 @@ df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 # ------------------------- MAIN NAVIGATION -------------------------
 page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis", "Cost Estimator"])
 
-# ------------------------- CALL PAGE FUNCTIONS -------------------------
-if page == "Multi-Well Comparison":
-    render_multi_well(df)
-elif page == "Sales Analysis":
-    render_sales_analysis(df)
-elif page == "Advanced Analysis":
-    render_advanced_analysis(df)
-elif page == "Cost Estimator":
+if page == "Cost Estimator":
     render_cost_estimator(df)
+elif page == "Multi-Well Comparison":
+    df_filtered = render_filter_panel(df)
+    render_multi_well(df_filtered)
+elif page == "Sales Analysis":
+    df_filtered = render_filter_panel(df)
+    render_sales_analysis(df_filtered)
+elif page == "Advanced Analysis":
+    df_filtered = render_filter_panel(df)
+    render_advanced_analysis(df_filtered)
+
+# NOTE: All pages now use consistent filters and layout styling.
