@@ -1,9 +1,10 @@
+# app.py (complete bundle with all pages)
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from enhanced_dashboard_charts import (
+from enhanced_visuals import (
     radar_chart_multi_kpi,
     cumulative_wells_chart,
     fluid_pie_chart_by_operator,
@@ -29,7 +30,6 @@ def load_styles():
         text-align: center;
     }
     </style>""", unsafe_allow_html=True)
-
 # ------------------------- SHARED FILTERS -------------------------
 def apply_shared_filters(df):
     st.sidebar.header("📊 Shared Filters")
