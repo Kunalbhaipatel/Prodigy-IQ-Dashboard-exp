@@ -37,8 +37,8 @@ def apply_shared_filters(df):
             if selected != "All":
                 filtered = filtered[filtered[col].astype(str) == selected]
 
-    filtered["TD_Date"] = pd.to_datetime(filtered["TD_Date"], errors="coerce")
     if "TD_Date" in filtered.columns:
+        filtered["TD_Date"] = pd.to_datetime(filtered["TD_Date"], errors="coerce")
         year_range = st.sidebar.slider("TD Date Range", 2020, 2026, (2020, 2026))
         filtered = filtered[(filtered["TD_Date"].dt.year >= year_range[0]) & (filtered["TD_Date"].dt.year <= year_range[1])]
 
@@ -141,7 +141,6 @@ def render_advanced_analysis(df):
         sce = row.get("Total_SCE", 0)
         bo, water, chem = row.get("Base_Oil", 0), row.get("Water", 0), row.get("Chemicals", 0)
         rop = row.get("ROP", 0)
-        hr = row.get("Drilling_Hours", 0)
 
         metrics.append({
             "Well_Name": row.get("Well_Name", ""),
@@ -186,12 +185,29 @@ def render_advanced_analysis(df):
 
     st.subheader("📤 Export Filtered Data")
     st.download_button("Download CSV", metric_df.to_csv(index=False), "filtered_advanced_metrics.csv", "text/csv")
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime
+
+# ✅ Set page config ONCE at the top
+st.set_page_config(page_title="Prodigy IQ Dashboard", layout="wide", page_icon="📊")
+
+# ------------------------- STYLING -------------------------
+def load_styles():
+    st.markdown("""<style>
+    div[data-testid="metric-container"] {
+        background-color: #fff;
+        padding: 1.2em;
+        border-radius: 15px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+        margin: 0.5em;
+        text-align: center;
+    }
+    </style>""", unsafe_allow_html=True)
 
 # ------------------------- PAGE: COST ESTIMATOR -------------------------
 def render_cost_estimator(df):
@@ -299,15 +315,17 @@ def render_cost_estimator(df):
     fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled")
 
     st.plotly_chart(fig_cost, use_container_width=True)
-    st.plotly_chart(fig_depth, use_container_width=True
+    st.plotly_chart(fig_depth, use_container_width=True)
+
 # ------------------------- LOAD DATA -------------------------
 load_styles()
 df = pd.read_csv("Refine Sample.csv")
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
 # ------------------------- MAIN NAVIGATION -------------------------
-page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis","Cost Estimator"])
+page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis", "Cost Estimator"])
 
+# ------------------------- CALL PAGE FUNCTIONS -------------------------
 if page == "Multi-Well Comparison":
     render_multi_well(df)
 elif page == "Sales Analysis":
@@ -316,4 +334,3 @@ elif page == "Advanced Analysis":
     render_advanced_analysis(df)
 elif page == "Cost Estimator":
     render_cost_estimator(df)
-
