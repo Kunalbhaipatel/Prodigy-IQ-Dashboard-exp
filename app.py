@@ -30,33 +30,56 @@ def load_styles():
     section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
         background: #e9ecef;
     }
+    .filter-tabs { background: #fafafa; padding: 0.5em; border-radius: 10px; margin-bottom: 1em; }
+    .filter-tabs button {
+        margin: 0 0.25em;
+        padding: 0.4em 0.8em;
+        border: none;
+        border-radius: 8px;
+        background-color: #d6d8db;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .filter-tabs button:hover {
+        background-color: #c0c2c5;
+    }
+    .filter-tabs .active {
+        background-color: #6c757d;
+        color: white;
+    }
     </style>""", unsafe_allow_html=True)
 
-# ------------------------- FILTER PANELS -------------------------
+# ------------------------- FILTER PANEL WITH TOGGLE -------------------------
 def render_filter_panel(df):
     with st.sidebar:
-        with st.expander("🌐 Global Filters", expanded=False):
-            well_filter = st.multiselect("Select Well(s)", sorted(df["Well_Name"].dropna().unique()), key="f1")
-            if well_filter:
-                df = df[df["Well_Name"].isin(well_filter)]
+        filter_mode = st.radio("🧰 Filter Mode", ["Global", "Common", "Advanced"], horizontal=True)
 
-        with st.expander("🔁 Common Filters", expanded=True):
-            shaker_filter = st.selectbox("Flowline Shaker", ["All"] + sorted(df["flowline_Shakers"].dropna().unique()), key="f2")
-            if shaker_filter != "All":
-                df = df[df["flowline_Shakers"] == shaker_filter]
+        if filter_mode == "Global":
+            with st.expander("🌐 Global Filters", expanded=True):
+                well_filter = st.multiselect("Select Well(s)", sorted(df["Well_Name"].dropna().unique()), key="f1")
+                if well_filter:
+                    df = df[df["Well_Name"].isin(well_filter)]
 
-            operator_filter = st.selectbox("Operator", ["All"] + sorted(df["Operator"].dropna().unique()), key="f3")
-            if operator_filter != "All":
-                df = df[df["Operator"] == operator_filter]
+        elif filter_mode == "Common":
+            with st.expander("🔁 Common Filters", expanded=True):
+                shaker_filter = st.selectbox("Flowline Shaker", ["All"] + sorted(df["flowline_Shakers"].dropna().unique()), key="f2")
+                if shaker_filter != "All":
+                    df = df[df["flowline_Shakers"] == shaker_filter]
 
-            contractor_filter = st.selectbox("Contractor", ["All"] + sorted(df["Contractor"].dropna().unique()), key="f4")
-            if contractor_filter != "All":
-                df = df[df["Contractor"] == contractor_filter]
+                operator_filter = st.selectbox("Operator", ["All"] + sorted(df["Operator"].dropna().unique()), key="f3")
+                if operator_filter != "All":
+                    df = df[df["Operator"] == operator_filter]
 
-        with st.expander("⚙️ Advanced Filters", expanded=False):
-            year_range = st.slider("TD Date Range", 2020, 2026, (2020, 2026))
-            df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
-            df = df[df["TD_Date"].dt.year.between(year_range[0], year_range[1])]
+                contractor_filter = st.selectbox("Contractor", ["All"] + sorted(df["Contractor"].dropna().unique()), key="f4")
+                if contractor_filter != "All":
+                    df = df[df["Contractor"] == contractor_filter]
+
+        elif filter_mode == "Advanced":
+            with st.expander("⚙️ Advanced Filters", expanded=True):
+                year_range = st.slider("TD Date Range", 2020, 2026, (2020, 2026))
+                df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
+                df = df[df["TD_Date"].dt.year.between(year_range[0], year_range[1])]
+
     return df
 # ------------------------- PAGE: MULTI-WELL COMPARISON -------------------------
 def render_multi_well(df):
