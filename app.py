@@ -13,6 +13,7 @@ from enhanced_dashboard_charts import (
     stacked_cost_chart,
     render_executive_summary
 )
+from Executive_Summary import render_executive_summary
 from advanced_analysis import render_advanced_analysis
 from cost_estimator import render_cost_estimator
 
