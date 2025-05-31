@@ -285,3 +285,4 @@ elif page == "Cost Estimator":
     render_cost_estimator(df)
 elif page == "Executive Summary":
     render_executive_summary(df)
+    
