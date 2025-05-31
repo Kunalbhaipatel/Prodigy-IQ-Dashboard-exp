@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-from enhanced_dashboard_charts import (
+from enhanced_visuals import (
     radar_chart_multi_kpi,
     cumulative_wells_chart,
     fluid_pie_chart_by_operator,
