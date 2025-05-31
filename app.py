@@ -12,7 +12,7 @@ from enhanced_dashboard_charts import (
     kpi_boxplot,
     stacked_cost_chart
 )
-from Executive_Summary import render_executive_summary
+from executive_summary import render_executive_summary
 from advanced_analysis import render_advanced_analysis
 from cost_estimator import render_cost_estimator
 
@@ -30,6 +30,7 @@ def load_styles():
         text-align: center;
     }
     </style>""", unsafe_allow_html=True)
+    
 # ------------------------- SHARED FILTERS -------------------------
 def apply_shared_filters(df):
     st.sidebar.header("📊 Shared Filters")
@@ -262,8 +263,7 @@ def render_cost_estimator(df):
 
     stacked_cost_chart(summary)
 
-# ------------------------- MAIN ENTRY POINT -------------------------
-load_styles()
+# ------------------------- MAIN ENTRY POINT -------------------------load_styles()
 df = pd.read_csv("Refine Sample.csv")
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
