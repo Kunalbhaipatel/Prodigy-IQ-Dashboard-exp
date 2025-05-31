@@ -115,6 +115,15 @@ def render_filter_panel(df):
                         df = df[(df["MD Depth"] >= low) & (df["MD Depth"] < high)]
 
     return df
+
+# ------------------------- LOAD STYLES AT START -------------------------
+load_styles()
+
+# ------------------------- READ DATAFRAME -------------------------
+df = pd.read_csv("Refine Sample.csv")
+df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
+
+
 # ------------------------- PAGE: MULTI-WELL COMPARISON -------------------------
 def render_multi_well(df):
     st.title("🚀 Prodigy IQ Multi-Well Dashboard")
