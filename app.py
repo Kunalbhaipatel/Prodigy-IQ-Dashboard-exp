@@ -186,8 +186,6 @@ def render_advanced_analysis(df):
 
     st.subheader("📤 Export Filtered Data")
     st.download_button("Download CSV", metric_df.to_csv(index=False), "filtered_advanced_metrics.csv", "text/csv")
-
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -361,15 +359,14 @@ def render_cost_estimator(df):
     fig_depth = px.bar(summary, x="Label", y="Depth", color="Label", title="Total Depth Drilled")
 
     st.plotly_chart(fig_cost, use_container_width=True)
-    st.plotly_chart(fig_depth, use_container_width=True)
-
+    st.plotly_chart(fig_depth, use_container_width=True
 # ------------------------- LOAD DATA -------------------------
 load_styles()
 df = pd.read_csv("Refine Sample.csv")
 df["TD_Date"] = pd.to_datetime(df["TD_Date"], errors='coerce')
 
 # ------------------------- MAIN NAVIGATION -------------------------
-page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis", "Cost Estimator"])
+page = st.sidebar.radio("📂 Navigate", ["Multi-Well Comparison", "Sales Analysis", "Advanced Analysis"])
 
 if page == "Multi-Well Comparison":
     render_multi_well(df)
@@ -379,3 +376,4 @@ elif page == "Advanced Analysis":
     render_advanced_analysis(df)
 elif page == "Cost Estimator":
     render_cost_estimator(df)
+
